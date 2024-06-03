@@ -174,7 +174,10 @@ class EntityNBFNet(BaseNBFNet):
         }
 
     def forward(self, data, relation_representations, batch):
-        h_index, t_index, r_index = batch.unbind(-1)
+        if batch.shape[2] == 3:
+            h_index, t_index, r_index = batch.unbind(-1)
+        else:
+            h_index, t_index, r_index, time_index = batch.unbind(-1)
 
         # initial query representations are those from the relation graph
         self.query = relation_representations
