@@ -10,7 +10,7 @@ model:
     class: NBFNet
     input_dim: 64
     hidden_dims: [64, 64, 64, 64, 64, 64]
-    message_func: distmult
+    message_func: dual
     aggregate_func: sum
     short_cut: yes
     layer_norm: yes
@@ -18,7 +18,7 @@ model:
     class: IndNBFNet
     input_dim: 64
     hidden_dims: [64, 64, 64, 64, 64, 64]
-    message_func: distmult
+    message_func: dual
     aggregate_func: sum
     short_cut: yes
     layer_norm: yes

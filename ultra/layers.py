@@ -15,6 +15,9 @@ class GeneralizedRelationalConv(MessagePassing):
     message2mul = {
         "transe": "add",
         "distmult": "mul",
+        "ttranse": "ttranse",
+        'dual':'dual',
+        'split':'split'
     }
 
     # TODO for compile() - doesn't work currently
@@ -87,7 +90,7 @@ class GeneralizedRelationalConv(MessagePassing):
         return output
 
     def propagate(self, edge_index, size=None, **kwargs):
-        if kwargs["edge_weight"].requires_grad or self.message_func == "rotate":
+        if kwargs["edge_weight"].requires_grad or self.message_func == "rotate" or self.message_func == 'dual' or self.message_func == 'split':
             # the rspmm cuda kernel only works for TransE and DistMult message functions
             # otherwise we invoke separate message & aggregate functions
             return super(GeneralizedRelationalConv, self).propagate(edge_index, size, **kwargs)
@@ -136,6 +139,18 @@ class GeneralizedRelationalConv(MessagePassing):
             x_j_re, x_j_im = input_j.chunk(2, dim=-1)
             r_j_re, r_j_im = relation_j.chunk(2, dim=-1)
             message_re = x_j_re * r_j_re - x_j_im * r_j_im
+            message_im = x_j_re * r_j_im + x_j_im * r_j_re
+            message = torch.cat([message_re, message_im], dim=-1)
+        elif self.message_func == "split":
+            x_j_re, x_j_im = input_j.chunk(2, dim=-1)
+            r_j_re, r_j_im = relation_j.chunk(2, dim=-1)
+            message_re = x_j_re * r_j_re + x_j_im * r_j_im
+            message_im = x_j_re * r_j_im + x_j_im * r_j_re
+            message = torch.cat([message_re, message_im], dim=-1)
+        elif self.message_func == "dual":
+            x_j_re, x_j_im = input_j.chunk(2, dim=-1)
+            r_j_re, r_j_im = relation_j.chunk(2, dim=-1)
+            message_re = x_j_re * r_j_re
             message_im = x_j_re * r_j_im + x_j_im * r_j_re
             message = torch.cat([message_re, message_im], dim=-1)
         else:
