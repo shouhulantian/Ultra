@@ -125,7 +125,7 @@ class EntityNBFNet(BaseNBFNet):
             mlp.append(nn.ReLU())
         mlp.append(nn.Linear(feature_dim, 1))
         self.mlp = nn.Sequential(*mlp)
-        self.use_time = True
+        self.use_time = False
     
     def bellmanford(self, data, h_index, r_index, separate_grad=False):
         batch_size = len(r_index)
