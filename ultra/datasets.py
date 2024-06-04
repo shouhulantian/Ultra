@@ -627,6 +627,16 @@ class ICEWS14(TransductiveTemporalDataset):
     name = "ICEWS14"
     delimiter = "\t"
 
+class ICEWS0515(TransductiveTemporalDataset):
+
+    urls = [
+        "https://raw.githubusercontent.com/soledad921/ATISE/master/icews05-15/train.txt",
+        "https://raw.githubusercontent.com/soledad921/ATISE/master/icews05-15/valid.txt",
+        "https://raw.githubusercontent.com/soledad921/ATISE/master/icews05-15/test.txt",
+        ]
+    name = "ICEWS14"
+    delimiter = "\t"
+
 class DBpedia100k(TransductiveDataset):
     urls = [
         "https://raw.githubusercontent.com/iieir-km/ComplEx-NNE_AER/master/datasets/DB100K/_train.txt",
