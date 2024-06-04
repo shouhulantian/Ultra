@@ -125,7 +125,7 @@ class EntityNBFNet(BaseNBFNet):
             mlp.append(nn.ReLU())
         mlp.append(nn.Linear(feature_dim, 1))
         self.mlp = nn.Sequential(*mlp)
-
+        self.use_time = True
     
     def bellmanford(self, data, h_index, r_index, separate_grad=False):
         batch_size = len(r_index)
@@ -173,6 +173,14 @@ class EntityNBFNet(BaseNBFNet):
             "edge_weights": edge_weights,
         }
 
+    def precompute_freqs_cis(self, dim: int, end: int, theta: float = 10000.0):
+        freqs = 1.0 / (theta ** (torch.arange(0, dim, 2)[: (dim // 2)].float() / dim))
+        t = torch.arange(end.item(), device=freqs.device)  # type: ignore
+        freqs = torch.outer(t, freqs).float()  # type: ignore
+        freqs_cos = torch.cos(freqs)  # real part
+        freqs_sin = torch.sin(freqs)  # imaginary part
+        return freqs_cos, freqs_sin
+
     def forward(self, data, relation_representations, batch):
         if batch.shape[2] == 3:
             h_index, t_index, r_index = batch.unbind(-1)
@@ -204,6 +212,17 @@ class EntityNBFNet(BaseNBFNet):
         index = t_index.unsqueeze(-1).expand(-1, -1, feature.shape[-1])
         # extract representations of tail entities from the updated node states
         feature = feature.gather(1, index)  # (batch_size, num_negative + 1, feature_dim)
+
+        if self.use_time:
+            freqs_cos, freqs_sin = self.precompute_freqs_cis(self.dims[0], data.num_time)
+            freqs_cos, freqs_sin = freqs_cos[time_index], freqs_sin[time_index]
+
+            feature_h, feature_r = feature[:,:, :self.dims[0]], feature[:,:, self.dims[0]:]
+            feature_h_r = feature_h[:,:, :self.dims[0]//2] * freqs_cos - feature_h[:,:, self.dims[0]//2:] * freqs_sin
+            feature_h_i = feature_h[:,:, :self.dims[0]//2] * freqs_sin + feature_h[:,:, self.dims[0]//2:] * freqs_cos
+            feature_r_r = feature_r[:,:, :self.dims[0]//2] * freqs_cos - feature_r[:,:, self.dims[0]//2:] * freqs_sin
+            feature_r_i = feature_r[:,:, :self.dims[0]//2] * freqs_sin + feature_r[:,:, self.dims[0]//2:] * freqs_cos
+            feature = torch.cat([feature_h_r, feature_h_i,feature_r_r,feature_r_i],dim=-1)
 
         # probability logit for each tail node in the batch
         # (batch_size, num_negative + 1, dim) -> (batch_size, num_negative + 1)
