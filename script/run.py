@@ -128,15 +128,9 @@ def train_and_validate_time(cfg, model, train_data, valid_data, device, logger, 
     world_size = util.get_world_size()
     rank = util.get_rank()
 
-    train_quadruples = torch.cat([train_data.target_edge_index, train_data.target_edge_type.unsqueeze(0)]).t()
+    train_quadruples = torch.cat([train_data.target_edge_index, train_data.target_edge_type.unsqueeze(0), train_data.target_time_type.unsqueeze(0)]).t()
     sampler = torch_data.DistributedSampler(train_quadruples, world_size, rank)
     train_loader = torch_data.DataLoader(train_quadruples, cfg.train.batch_size, sampler=sampler)
-
-    test_quadruples = torch.cat([test_data.target_edge_index, test_data.target_edge_type.unsqueeze(0), test_data.target_time_type.unsqueeze(0)]).t()
-    if test_mode:
-        test_quadruples = test_quadruples[:90]
-    sampler = torch_data.DistributedSampler(test_quadruples, world_size, rank)
-    test_loader = torch_data.DataLoader(test_quadruples, cfg.train.batch_size, sampler=sampler)
 
     batch_per_epoch = batch_per_epoch or len(train_loader)
 
@@ -510,8 +504,11 @@ if __name__ == "__main__":
     
     val_filtered_data = val_filtered_data.to(device)
     test_filtered_data = test_filtered_data.to(device)
-    
-    train_and_validate(cfg, model, train_data, valid_data, filtered_data=val_filtered_data, device=device, batch_per_epoch=cfg.train.batch_per_epoch, logger=logger)
+    if 'time_type' in dataset._data.keys():
+        train_and_validate_time(cfg, model, train_data, valid_data, filtered_data=val_filtered_data, device=device,
+                           batch_per_epoch=cfg.train.batch_per_epoch, logger=logger)
+    else:
+        train_and_validate(cfg, model, train_data, valid_data, filtered_data=val_filtered_data, device=device, batch_per_epoch=cfg.train.batch_per_epoch, logger=logger)
     if util.get_rank() == 0:
         logger.warning(separator)
         logger.warning("Evaluate on valid")
