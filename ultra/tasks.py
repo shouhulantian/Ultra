@@ -46,7 +46,7 @@ def negative_sampling(data, batch, num_negative, strict=True):
     # else:
     #     pos_h_index, pos_t_index, pos_r_index, pos_time_index = batch.unbind(-1)
 
-    #pos_h_index, pos_t_index, pos_r_index = batch.t()
+    pos_h_index, pos_t_index, pos_r_index = batch.t()
 
     # strict negative sampling vs random negative sampling
     if strict:
