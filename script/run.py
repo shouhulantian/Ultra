@@ -505,7 +505,7 @@ if __name__ == "__main__":
     val_filtered_data = val_filtered_data.to(device)
     test_filtered_data = test_filtered_data.to(device)
     if 'time_type' in dataset._data.keys():
-        train_and_validate_time(cfg, model, train_data, valid_data, filtered_data=val_filtered_data, device=device,
+        train_and_validate(cfg, model, train_data, valid_data, filtered_data=val_filtered_data, device=device,
                            batch_per_epoch=cfg.train.batch_per_epoch, logger=logger)
     else:
         train_and_validate(cfg, model, train_data, valid_data, filtered_data=val_filtered_data, device=device, batch_per_epoch=cfg.train.batch_per_epoch, logger=logger)
