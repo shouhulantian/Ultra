@@ -634,7 +634,7 @@ class ICEWS0515(TransductiveTemporalDataset):
         "https://raw.githubusercontent.com/soledad921/ATISE/master/icews05-15/valid.txt",
         "https://raw.githubusercontent.com/soledad921/ATISE/master/icews05-15/test.txt",
         ]
-    name = "ICEWS14"
+    name = "ICEWS0515"
     delimiter = "\t"
 
 class DBpedia100k(TransductiveDataset):
