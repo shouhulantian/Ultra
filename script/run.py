@@ -206,7 +206,7 @@ def train_and_validate_time(cfg, model, train_data, valid_data, device, logger, 
         if rank == 0:
             logger.warning(separator)
             logger.warning("Evaluate on valid")
-        result = test(cfg, model, valid_data, filtered_data=filtered_data, device=device, logger=logger)
+        result = test_time(cfg, model, valid_data, filtered_data=filtered_data, device=device, logger=logger)
         if result > best_result:
             best_result = result
             best_epoch = epoch
@@ -223,8 +223,6 @@ def test(cfg, model, test_data, device, logger, filtered_data=None, return_metri
     rank = util.get_rank()
 
     test_triplets = torch.cat([test_data.target_edge_index, test_data.target_edge_type.unsqueeze(0)]).t()
-    if test_mode:
-        test_triplets = test_triplets[:90]
     sampler = torch_data.DistributedSampler(test_triplets, world_size, rank)
     test_loader = torch_data.DataLoader(test_triplets, cfg.train.batch_size, sampler=sampler)
 
