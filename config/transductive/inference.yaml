@@ -22,6 +22,7 @@ model:
     aggregate_func: sum
     short_cut: yes
     layer_norm: yes
+    use_time: True
 
 task:
   name: TransductiveInference
@@ -36,7 +37,7 @@ optimizer:
 
 train:
   gpus: {{ gpus }}
-  batch_size: 32
+  batch_size: 2
   num_epoch: {{ epochs }}
   log_interval: 100
   batch_per_epoch: {{ bpe }}

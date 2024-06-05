@@ -41,16 +41,19 @@ def edge_match(edge_index, query_index):
 
 def negative_sampling(data, batch, num_negative, strict=True):
     batch_size = len(batch)
-    # if batch.shape[2] == 3:
-    #     pos_h_index, pos_t_index, pos_r_index = batch.unbind(-1)
-    # else:
-    #     pos_h_index, pos_t_index, pos_r_index, pos_time_index = batch.unbind(-1)
+    if batch.shape[1] == 3:
+        pos_h_index, pos_t_index, pos_r_index = batch.unbind(-1)
+    else:
+        pos_h_index, pos_t_index, pos_r_index, pos_time_index = batch.unbind(-1)
 
-    pos_h_index, pos_t_index, pos_r_index = batch.t()
+    #pos_h_index, pos_t_index, pos_r_index = batch.t()
 
     # strict negative sampling vs random negative sampling
     if strict:
-        t_mask, h_mask = strict_negative_mask(data, batch)
+        if batch.shape[1] == 3:
+            t_mask, h_mask = strict_negative_mask(data, batch)
+        else:
+            t_mask, h_mask = strict_negative_time_mask(data, batch)
         t_mask = t_mask[:batch_size // 2]
         neg_t_candidate = t_mask.nonzero()[:, 1]
         num_t_candidate = t_mask.sum(dim=-1)
@@ -78,7 +81,11 @@ def negative_sampling(data, batch, num_negative, strict=True):
     t_index[:batch_size // 2, 1:] = neg_t_index
     h_index[batch_size // 2:, 1:] = neg_h_index
 
-    return torch.stack([h_index, t_index, r_index], dim=-1)
+    if batch.shape[1] == 3:
+        return torch.stack([h_index, t_index, r_index], dim=-1)
+    else:
+        time_index = pos_time_index.unsqueeze(-1).repeat(1, num_negative + 1)
+        return torch.stack([h_index, t_index, r_index,time_index], dim=-1)
 
 
 def all_negative(data, batch):

@@ -20,7 +20,6 @@ from ultra.models import Ultra
 
 separator = ">" * 30
 line = "-" * 30
-test_mode = 0
 
 
 def train_and_validate(cfg, model, train_data, valid_data, device, logger, filtered_data=None, batch_per_epoch=None):
@@ -334,8 +333,6 @@ def test_time(cfg, model, test_data, device, logger, filtered_data=None, return_
     rank = util.get_rank()
 
     test_quadruples = torch.cat([test_data.target_edge_index, test_data.target_edge_type.unsqueeze(0), test_data.target_time_type.unsqueeze(0)]).t()
-    if test_mode:
-        test_quadruples = test_quadruples[:90]
     sampler = torch_data.DistributedSampler(test_quadruples, world_size, rank)
     test_loader = torch_data.DataLoader(test_quadruples, cfg.train.batch_size, sampler=sampler)
 
@@ -505,7 +502,7 @@ if __name__ == "__main__":
     val_filtered_data = val_filtered_data.to(device)
     test_filtered_data = test_filtered_data.to(device)
     if 'time_type' in dataset._data.keys():
-        train_and_validate(cfg, model, train_data, valid_data, filtered_data=val_filtered_data, device=device,
+        train_and_validate_time(cfg, model, train_data, valid_data, filtered_data=val_filtered_data, device=device,
                            batch_per_epoch=cfg.train.batch_per_epoch, logger=logger)
     else:
         train_and_validate(cfg, model, train_data, valid_data, filtered_data=val_filtered_data, device=device, batch_per_epoch=cfg.train.batch_per_epoch, logger=logger)

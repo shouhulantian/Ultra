@@ -103,7 +103,7 @@ class RelNBFNet(BaseNBFNet):
 
 class EntityNBFNet(BaseNBFNet):
 
-    def __init__(self, input_dim, hidden_dims, num_relation=1, **kwargs):
+    def __init__(self, input_dim, hidden_dims, use_time=False, num_relation=1, **kwargs):
 
         # dummy num_relation = 1 as we won't use it in the NBFNet layer
         super().__init__(input_dim, hidden_dims, num_relation, **kwargs)
@@ -125,7 +125,7 @@ class EntityNBFNet(BaseNBFNet):
             mlp.append(nn.ReLU())
         mlp.append(nn.Linear(feature_dim, 1))
         self.mlp = nn.Sequential(*mlp)
-        self.use_time = False
+        self.use_time = use_time
     
     def bellmanford(self, data, h_index, r_index, separate_grad=False):
         batch_size = len(r_index)
