@@ -50,10 +50,10 @@ def negative_sampling(data, batch, num_negative, strict=True):
 
     # strict negative sampling vs random negative sampling
     if strict:
-        # if batch.shape[1] == 3:
-        #     t_mask, h_mask = strict_negative_mask(data, batch)
-        # else:
-        #     t_mask, h_mask = strict_negative_time_mask(data, batch)
+        if batch.shape[1] == 3:
+            t_mask, h_mask = strict_negative_mask(data, batch)
+        else:
+            t_mask, h_mask = strict_negative_time_mask(data, batch)
         t_mask, h_mask = strict_negative_mask(data, batch)
         t_mask = t_mask[:batch_size // 2]
         neg_t_candidate = t_mask.nonzero()[:, 1]
