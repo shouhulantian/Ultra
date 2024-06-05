@@ -215,8 +215,8 @@ class EntityNBFNet(BaseNBFNet):
 
         if self.use_time:
             freqs_cos, freqs_sin = self.precompute_freqs_cis(self.dims[0], data.num_time)
-            freqs_cos = freqs_cos.cuda()
-            freqs_sin = freqs_sin.cuda()
+            freqs_cos = freqs_cos.to(time_index.device)
+            freqs_sin = freqs_sin.to(time_index.device)
             freqs_cos, freqs_sin = freqs_cos[time_index], freqs_sin[time_index]
 
             feature_h, feature_r = feature[:,:, :self.dims[0]], feature[:,:, self.dims[0]:]
