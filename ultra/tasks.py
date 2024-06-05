@@ -50,10 +50,11 @@ def negative_sampling(data, batch, num_negative, strict=True):
 
     # strict negative sampling vs random negative sampling
     if strict:
-        if batch.shape[1] == 3:
-            t_mask, h_mask = strict_negative_mask(data, batch)
-        else:
-            t_mask, h_mask = strict_negative_time_mask(data, batch)
+        # if batch.shape[1] == 3:
+        #     t_mask, h_mask = strict_negative_mask(data, batch)
+        # else:
+        #     t_mask, h_mask = strict_negative_time_mask(data, batch)
+        t_mask, h_mask = strict_negative_mask(data, batch)
         t_mask = t_mask[:batch_size // 2]
         neg_t_candidate = t_mask.nonzero()[:, 1]
         num_t_candidate = t_mask.sum(dim=-1)
@@ -120,7 +121,11 @@ def all_negative(data, batch):
 def strict_negative_mask(data, batch):
     # this function makes sure that for a given (h, r) batch we will NOT sample true tails as random negatives
     # similarly, for a given (t, r) we will NOT sample existing true heads as random negatives
-    pos_h_index, pos_t_index, pos_r_index = batch.t()
+    if batch.shape[1] == 3:
+        pos_h_index, pos_t_index, pos_r_index = batch.unbind(-1)
+    else:
+        pos_h_index, pos_t_index, pos_r_index, pos_time_index = batch.unbind(-1)
+    #pos_h_index, pos_t_index, pos_r_index = batch.t()
     # part I: sample hard negative tails
     # edge index of all (head, relation) edges from the underlying graph
     edge_index = torch.stack([data.edge_index[0], data.edge_type])
