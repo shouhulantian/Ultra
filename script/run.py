@@ -16,6 +16,7 @@ from torch_geometric.data import Data
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from ultra import tasks, util
 from ultra.models import Ultra
+from ultra.base_nbfnet import BaseNBFNet
 
 
 separator = ">" * 30
@@ -454,10 +455,15 @@ if __name__ == "__main__":
     valid_data = valid_data.to(device)
     test_data = test_data.to(device)
 
-    model = Ultra(
-        rel_model_cfg=cfg.model.relation_model,
-        entity_model_cfg=cfg.model.entity_model,
-    )
+    if cfg.model.pop('class') == 'Ultra':
+        model = Ultra(
+            rel_model_cfg=cfg.model.relation_model,
+            entity_model_cfg=cfg.model.entity_model,
+        )
+    else:
+        cfg.model.entity_model.num_relation = dataset.num_relations
+        cfg.model.entity_model.use_layer = True
+        model = BaseNBFNet(**cfg.model.entity_model)
 
     if "checkpoint" in cfg and cfg.checkpoint is not None:
         state = torch.load(cfg.checkpoint, map_location="cpu")

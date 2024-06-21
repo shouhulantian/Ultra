@@ -15,7 +15,7 @@ class GeneralizedRelationalConv(MessagePassing):
     message2mul = {
         "transe": "add",
         "distmult": "mul",
-        "ttranse": "ttranse",
+        #"ttranse": "ttranse",
         'dual':'dual',
         'split':'split'
     }

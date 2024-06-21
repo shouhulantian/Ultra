@@ -1,6 +1,5 @@
 import torch
 from torch import nn
-
 from . import tasks, layers
 from ultra.base_nbfnet import BaseNBFNet
 
@@ -23,7 +22,6 @@ class Ultra(nn.Module):
         score = self.entity_model(data, relation_representations, batch)
         
         return score
-
 
 # NBFNet to work on the graph of relations with 4 fundamental interactions
 # Doesn't have the final projection MLP from hidden dim -> 1, returns all node representations 
