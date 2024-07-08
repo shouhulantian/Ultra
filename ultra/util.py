@@ -15,6 +15,8 @@ import torch
 from torch import distributed as dist
 from torch_geometric.data import Data
 from torch_geometric.datasets import RelLinkPredDataset, WordNet18RR
+from typing import Optional, Dict, Any, Tuple
+import numpy as np
 
 from ultra import models, datasets
 
@@ -109,6 +111,36 @@ def get_device(cfg):
         device = torch.device("cpu")
     return device
 
+def generate_splits(
+        self,
+        full_data: Dict[str, Any],
+        val_ratio: float = 0.15,
+        test_ratio: float = 0.15,
+) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
+    r"""Generates train, validation, and test splits from the full dataset
+    Args:
+        full_data: dictionary containing the full dataset
+        val_ratio: ratio of validation data
+        test_ratio: ratio of test data
+    Returns:
+        train_data: dictionary containing the training dataset
+        val_data: dictionary containing the validation dataset
+        test_data: dictionary containing the test dataset
+    """
+    #my_data = np.genfromtxt('my_file.csv', delimiter=',')
+    val_time, test_time = list(
+        np.quantile(
+            full_data["timestamps"],
+            [(1 - val_ratio - test_ratio), (1 - test_ratio)],
+        )
+    )
+    timestamps = full_data["timestamps"]
+
+    train_mask = timestamps <= val_time
+    val_mask = np.logical_and(timestamps <= test_time, timestamps > val_time)
+    test_mask = timestamps > test_time
+
+    return train_mask, val_mask, test_mask
 
 def create_working_directory(cfg):
     file_name = "working_dir.tmp"
