@@ -640,8 +640,8 @@ class ICEWS0515(TransductiveTemporalDataset):
 class smallpedia(TransductiveTemporalDataset):
     urls = [
         "https://raw.githubusercontent.com/shouhulantian/Ultra/main/datasets/smallpedia/train.txt",
-        "https://raw.githubusercontent.com/shouhulantian/Ultra/main/datasets/smallpedia/valid.txtt",
-        "https://raw.githubusercontent.com/shouhulantian/Ultra/main/datasets/smallpedia/test.txtt",
+        "https://raw.githubusercontent.com/shouhulantian/Ultra/main/datasets/smallpedia/valid.txt",
+        "https://raw.githubusercontent.com/shouhulantian/Ultra/main/datasets/smallpedia/test.txt",
     ]
     name = "ICEWS0515"
     delimiter = "\t"
