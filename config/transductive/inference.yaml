@@ -23,6 +23,10 @@ model:
     short_cut: yes
     layer_norm: yes
     use_time: True
+  rule_model:
+    class: Recurrency
+    score_path: /Users/pjx/Documents/git/recurrency_baseline_tkg/results/baselinepsibaselinexi/baselinepsibaselinexi_ICEWS14_0.0_singlestep_0_-1_-1.pkl
+    alpha: 0.5
 
 task:
   name: TransductiveInference

@@ -456,9 +456,11 @@ if __name__ == "__main__":
     test_data = test_data.to(device)
 
     if cfg.model.pop('class') == 'Ultra':
+        cfg.model.rule_model.num_relation = test_data.relation_graph.num_nodes
         model = Ultra(
             rel_model_cfg=cfg.model.relation_model,
             entity_model_cfg=cfg.model.entity_model,
+            rule_model_cfg = cfg.model.rule_model
         )
     else:
         cfg.model.entity_model.num_relation = dataset.num_relations
@@ -512,16 +514,16 @@ if __name__ == "__main__":
         train_and_validate(cfg, model, train_data, valid_data, filtered_data=val_filtered_data, device=device, batch_per_epoch=cfg.train.batch_per_epoch, logger=logger)
     if util.get_rank() == 0:
         logger.warning(separator)
-        logger.warning("Evaluate on valid")
-    if 'time_type' in dataset._data.keys():
-        test_time(cfg, model, valid_data, filtered_data=val_filtered_data, device=device, logger=logger)
-    else:
-        test(cfg, model, valid_data, filtered_data=val_filtered_data, device=device, logger=logger)
-    if util.get_rank() == 0:
-        logger.warning(separator)
         logger.warning("Evaluate on test")
     if 'time_type' in dataset._data.keys():
         test_time(cfg, model, test_data, filtered_data=test_filtered_data, device=device, logger=logger)
     else:
         test(cfg, model, test_data, filtered_data=test_filtered_data, device=device, logger=logger)
+    if util.get_rank() == 0:
+        logger.warning(separator)
+        logger.warning("Evaluate on valid")
+    if 'time_type' in dataset._data.keys():
+        test_time(cfg, model, valid_data, filtered_data=val_filtered_data, device=device, logger=logger)
+    else:
+        test(cfg, model, valid_data, filtered_data=val_filtered_data, device=device, logger=logger)
     #test(cfg, model, test_data, filtered_data=test_filtered_data, device=device, logger=logger)

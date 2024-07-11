@@ -2,15 +2,20 @@ import torch
 from torch import nn
 from . import tasks, layers
 from ultra.base_nbfnet import BaseNBFNet
+import numpy as np
+import pickle
+from ultra.datasets import ICEWS14Ind
+#from ultra.util import tranform_reccurrency2ultra
 
 class Ultra(nn.Module):
 
-    def __init__(self, rel_model_cfg, entity_model_cfg):
+    def __init__(self, rel_model_cfg, entity_model_cfg, rule_model_cfg):
         # kept that because super Ultra sounds cool
         super(Ultra, self).__init__()
 
         self.relation_model = RelNBFNet(**rel_model_cfg)
         self.entity_model = EntityNBFNet(**entity_model_cfg)
+        self.rule_model = Reccurency(**rule_model_cfg)
 
         
     def forward(self, data, batch):
@@ -18,6 +23,7 @@ class Ultra(nn.Module):
         # batch shape: (bs, 1+num_negs, 3)
         # relations are the same all positive and negative triples, so we can extract only one from the first triple among 1+nug_negs
         query_rels = batch[:, 0, 2]
+        score_rule = self.rule_model(data,batch)
         relation_representations = self.relation_model(data.relation_graph, query=query_rels)
         score = self.entity_model(data, relation_representations, batch)
         
@@ -228,6 +234,158 @@ class EntityNBFNet(BaseNBFNet):
         # (batch_size, num_negative + 1, dim) -> (batch_size, num_negative + 1)
         score = self.mlp(feature).squeeze(-1)
         return score.view(shape)
+
+class Reccurency(nn.Module):
+
+    def __init__(self, score_path, alpha, num_relation, **kwargs):
+        # kept that because super Ultra sounds cool
+        super(Reccurency, self).__init__()
+
+        self.score_path = score_path
+        self.alpha = alpha
+        self.num_relation = num_relation
+        self.ts, self.triples, self.scores = self.tranform_reccurrency2ultra(self.score_path,self.num_relation//2)
+        #self.ts, self.triples, self.scores = self.restructure_pickle_file(pickle.load(open(self.score_path,'rb')),self.num_relation)
+
+    def forward(self, data, batch):
+        # batch shape: (bs, 1+num_negs, 3)
+        # relations are the same all positive and negative triples, so we can extract only one from the first triple among 1+nug_negs
+        if batch[0,0,3].item() not in self.ts:
+            score = 0
+        else:
+            score = self.fetch_all_scores(batch,self.ts,self.triples,self.scores) * self.alpha
+
+        return score
+
+    def fetch_all_scores(self,main_tensor, timestamps, triples_list, scores_list):
+        batch_size, num_quadruples, _ = main_tensor.size()
+        all_scores = torch.zeros((batch_size, num_quadruples)).to(main_tensor.device)
+
+        for batch_idx in range(batch_size):
+            relation = main_tensor[batch_idx, 0, 2]
+            head = main_tensor[batch_idx, 0, 0]
+            timestamp = main_tensor[batch_idx,0,3]
+            #
+            # for quadruple_idx in range(num_quadruples):
+            #     quadruple = main_tensor[batch_idx, quadruple_idx].tolist()
+            #     head, tail, relation, timestamp = quadruple
+
+            if timestamp not in timestamps:
+                all_scores[batch_idx,:] = 0
+                continue
+
+                # Find the index of the timestamp in the numpy array
+            timestamp_idx = timestamps.index(timestamp)
+            # Get the triples and scores for the corresponding timestamp
+            triples_tensor = triples_list[timestamp_idx]
+            scores_tensor = scores_list[timestamp_idx]
+
+            # Find the index of the triple in the triples tensor
+            triple_idx = -1
+            for i, triple in enumerate(triples_tensor):
+                triple = triple.tolist()
+                if triple[0] == head and triple[1] == relation:
+                    triple_idx = i
+                    break
+
+            if triple_idx == -1:
+                all_scores[batch_idx, :] = 0
+            else:
+                score = scores_tensor[triple_idx]
+                all_scores[batch_idx, :] = torch.from_numpy(score).to(all_scores.device)
+
+        return all_scores
+
+    def restructure_pickle_file(self,pickle_file: dict, num_rels: int) -> list:
+        """
+        Restructure the pickle format to be able to use the functions in RE-GCN implementations.
+        The main idea is to use them as tensors so itspeeds up the computations
+        :param pickle_file:
+        :param num_rels:
+        :return:
+        """
+        pickle_file = pickle.load(open(self.score_path, 'rb'))
+        test_triples, final_scores, timesteps = [], [], []
+        for query, scores in pickle_file.items():
+            timestep = int(query.split('_')[-1])
+            timesteps.append(timestep)
+        timestepsuni = np.unique(timesteps)  # list with unique timestamps
+
+        timestepsdict_triples = {}  # dict to be filled with keys: timestep, values: list of all triples for that timestep
+        timestepsdict_scores = {}  # dict to be filled with keys: timestep, values: list of all scores for that timestep
+
+        for query, scores in pickle_file.items():
+            timestep = int(query.split('_')[-1])
+            triple = query.split('_')[:-1]
+            triple = np.array([int(elem.replace('xxx', '')) if 'xxx' in elem else elem for elem in triple],
+                              dtype='int32')
+            if query.startswith('xxx'):  # then it was subject prediction -
+                triple = triple[np.argsort([2, 1, 0])]  # so we have to turn around the order
+                triple[1] = triple[1] + num_rels  # and the relation id has to be original+num_rels to indicate it was
+                # other way round
+
+            if timestep in timestepsdict_triples:
+                timestepsdict_triples[timestep].append(torch.tensor(triple))
+                timestepsdict_scores[timestep].append(torch.tensor(scores[0]))
+            else:
+                timestepsdict_triples[timestep] = [torch.tensor(triple)]
+                timestepsdict_scores[timestep] = [torch.tensor(scores[0])]
+
+        for t in np.sort(list(timestepsdict_triples.keys())):
+            test_triples.append(torch.stack(timestepsdict_triples[t]))
+            final_scores.append(torch.stack(timestepsdict_scores[t]))
+
+        return timestepsuni, test_triples, final_scores
+
+    def tranform_reccurrency2ultra(self,pickle_file, num_rels):
+        ts, triples, scores = self.restructure_pickle_file(pickle_file, num_rels)
+        datasets = ICEWS14Ind('~/git/ULTRA/kg-datasets/')
+        ent_vocab, rel_vocab, time_vocab = datasets.provide_vocab()
+        ts_convert, triples_convert, scores_convert = [], [], []
+        for t in ts:
+            t_new = time_vocab[str((t-1)*24)]
+            ts_convert.append(t_new)
+
+        for i in range(len(triples)):
+            snapshot = triples[i]
+            scoreshot = scores[i]
+            transformed_tensor = np.empty_like(snapshot)
+            transformed_scores = np.empty_like(scoreshot)
+
+            for i in range(snapshot.shape[0]):
+                head_entity_idx = str(snapshot[i, 0].item())
+                relation_idx = snapshot[i, 1].item()
+                tail_entity_idx = str(snapshot[i, 2].item())
+
+                head_entity_name = ent_vocab[head_entity_idx]
+                if int(relation_idx) < num_rels:
+                    relation_name = rel_vocab[str(relation_idx)]
+                else:
+                    relation_name = rel_vocab[str(relation_idx-num_rels)] + num_rels
+                tail_entity_name = ent_vocab[tail_entity_idx]
+
+                # # Transform to vocab indices
+                # head_entity_vocab_idx = list(ent_vocab.keys())[list(ent_vocab.values()).index(head_entity_name)]
+                # relation_vocab_idx = list(rel_vocab.keys())[list(rel_vocab.values()).index(relation_name)]
+                # tail_entity_vocab_idx = list(ent_vocab.keys())[list(ent_vocab.values()).index(tail_entity_name)]
+
+                transformed_tensor[i, 0] = head_entity_name
+                transformed_tensor[i, 1] = relation_name
+                transformed_tensor[i, 2] = tail_entity_name
+            triples_convert.append(transformed_tensor)
+
+            # Extract entity indices from the vocabulary
+            num_rows, num_cols = scoreshot.shape
+            # Sort the entity indices to reorder columns in score_list
+            for row in range(num_rows):
+                transformed_scores[row, :] = scoreshot[row, [ent_vocab[str(i)] for i in range(num_cols)]]
+            scores_convert.append(transformed_scores)
+        output_log = {'ts_convert':ts_convert,
+                      'triples_convert':triples_convert,
+                      'scores_convert':scores_convert}
+        pickle.dump(output_log, open('ICEWS14Ind_converted.pkl','wb'), protocol=4)
+
+        return ts_convert, triples_convert, scores_convert
 
     
 

@@ -428,6 +428,7 @@ class TransductiveTemporalDataset(InMemoryDataset):
         # for AristoV4 train rels 1593, test 1604
         num_relations = test_results["num_relation"]
         num_time = test_results['num_time']
+        #self.num_relations_real = num_relations
 
         train_quadruples = train_results["quadruples"]
         valid_quadruples = valid_results["quadruples"]
@@ -442,14 +443,18 @@ class TransductiveTemporalDataset(InMemoryDataset):
         test_edges = torch.tensor([[t[0], t[1]] for t in test_quadruples], dtype=torch.long).t()
         test_etypes = torch.tensor([t[2] for t in test_quadruples])
 
-        if len(train_quadruples[0]) == 4:
-            train_target_ttypes = torch.tensor([t[3] for t in train_quadruples])
-            valid_target_ttypes = torch.tensor([t[3] for t in valid_quadruples])
-            test_target_ttypes = torch.tensor([t[3] for t in test_quadruples])
-        else:
-            train_target_ttypes = torch.tensor([(t[3],t[4]) for t in train_quadruples])
-            valid_target_ttypes = torch.tensor([(t[3],t[4]) for t in valid_quadruples])
-            test_target_ttypes = torch.tensor([(t[3],t[4]) for t in test_quadruples])
+        train_target_ttypes = torch.tensor([t[3] for t in train_quadruples])
+        valid_target_ttypes = torch.tensor([t[3] for t in valid_quadruples])
+        test_target_ttypes = torch.tensor([t[3] for t in test_quadruples])
+
+        # if len(train_quadruples[0]) == 4:
+        #     train_target_ttypes = torch.tensor([t[3] for t in train_quadruples])
+        #     valid_target_ttypes = torch.tensor([t[3] for t in valid_quadruples])
+        #     test_target_ttypes = torch.tensor([t[3] for t in test_quadruples])
+        # else:
+        #     train_target_ttypes = torch.tensor([(t[3],t[4]) for t in train_quadruples])
+        #     valid_target_ttypes = torch.tensor([(t[3],t[4]) for t in valid_quadruples])
+        #     test_target_ttypes = torch.tensor([(t[3],t[4]) for t in test_quadruples])
 
         train_edges = torch.cat([train_target_edges, train_target_edges.flip(0)], dim=1)
         train_etypes = torch.cat([train_target_etypes, train_target_etypes + num_relations])
@@ -470,6 +475,18 @@ class TransductiveTemporalDataset(InMemoryDataset):
             test_data = self.pre_transform(test_data)
 
         torch.save((self.collate([train_data, valid_data, test_data])), self.processed_paths[0])
+
+    def provide_vocab(self):
+
+        train_files = self.raw_paths[:3]
+
+        train_results = self.load_file(train_files[0], inv_entity_vocab={}, inv_rel_vocab={}, inv_time_vocab={})
+        valid_results = self.load_file(train_files[1],
+                                       train_results["inv_entity_vocab"], train_results["inv_rel_vocab"], train_results['inv_time_vocab'])
+        test_results = self.load_file(train_files[2],
+                                      valid_results["inv_entity_vocab"], valid_results["inv_rel_vocab"],valid_results['inv_time_vocab'])
+
+        return test_results["inv_entity_vocab"], test_results["inv_rel_vocab"], test_results["inv_time_vocab"]
 
     def __repr__(self):
         return "%s()" % (self.name)
@@ -643,7 +660,16 @@ class smallpedia(TransductiveTemporalDataset):
         "https://raw.githubusercontent.com/shouhulantian/Ultra/main/datasets/smallpedia/valid.txt",
         "https://raw.githubusercontent.com/shouhulantian/Ultra/main/datasets/smallpedia/test.txt",
     ]
-    name = "ICEWS0515"
+    name = "smallpedia"
+    delimiter = "\t"
+
+class ICEWS14Ind(TransductiveTemporalDataset):
+    urls = [
+        "https://raw.githubusercontent.com/nec-research/recurrency_baseline_tkg/master/data/ICEWS14/train.txt",
+        "https://raw.githubusercontent.com/nec-research/recurrency_baseline_tkg/master/data/ICEWS14/valid.txt",
+        "https://raw.githubusercontent.com/nec-research/recurrency_baseline_tkg/master/data/ICEWS14/test.txt",
+    ]
+    name = "ICEWS14Ind"
     delimiter = "\t"
 
 class DBpedia100k(TransductiveDataset):
