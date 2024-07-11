@@ -26,6 +26,7 @@ class Ultra(nn.Module):
         score_rule = self.rule_model(data,batch)
         relation_representations = self.relation_model(data.relation_graph, query=query_rels)
         score = self.entity_model(data, relation_representations, batch)
+        score = score_rule + score
         
         return score
 
@@ -253,7 +254,7 @@ class Reccurency(nn.Module):
         if batch[0,0,3].item() not in self.ts:
             score = 0
         else:
-            score = self.fetch_all_scores(batch,self.ts,self.triples,self.scores) * self.alpha
+            score = self.fetch_all_scores(batch,self.ts,self.triples,self.scores)*self.alpha
 
         return score
 
