@@ -16,7 +16,6 @@ class Ultra(nn.Module):
         self.relation_model = RelNBFNet(**rel_model_cfg)
         self.entity_model = EntityNBFNet(**entity_model_cfg)
         self.rule_model = Reccurency(**rule_model_cfg)
-
         
     def forward(self, data, batch):
         
@@ -26,7 +25,7 @@ class Ultra(nn.Module):
         score_rule, alpha = self.rule_model(data,batch)
         relation_representations = self.relation_model(data.relation_graph, query=query_rels)
         score = self.entity_model(data, relation_representations, batch)
-        score = score_rule + score *(1-alpha)
+        score = score_rule*alpha + score*(1-alpha)
         
         return score
 
@@ -238,7 +237,7 @@ class EntityNBFNet(BaseNBFNet):
 
 class Reccurency(nn.Module):
 
-    def __init__(self, score_path, alpha, num_relation, **kwargs):
+    def __init__(self, score_path,alpha, num_relation, **kwargs):
         # kept that because super Ultra sounds cool
         super(Reccurency, self).__init__()
 
@@ -256,7 +255,7 @@ class Reccurency(nn.Module):
         else:
             score = self.fetch_all_scores(batch,self.ts,self.triples,self.scores)*self.alpha
 
-        return score
+        return score, self.alpha
 
     def fetch_all_scores(self,main_tensor, timestamps, triples_list, scores_list):
         batch_size, num_quadruples, _ = main_tensor.size()
@@ -295,7 +294,7 @@ class Reccurency(nn.Module):
                 score = scores_tensor[triple_idx]
                 all_scores[batch_idx, :] = torch.from_numpy(score).to(all_scores.device)
 
-        return all_scores, self.alpha
+        return all_scores
 
     def restructure_pickle_file(self,pickle_file: dict, num_rels: int) -> list:
         """
