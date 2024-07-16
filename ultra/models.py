@@ -25,8 +25,8 @@ class Ultra(nn.Module):
         query_rels = batch[:, 0, 2]
         score_rule = self.rule_model(data,batch)
         relation_representations = self.relation_model(data.relation_graph, query=query_rels)
-        score = self.entity_model(data, relation_representations, batch)
-        score = score_rule + score
+        score, alpha = self.entity_model(data, relation_representations, batch)
+        score = score_rule + score *(1-alpha)
         
         return score
 
@@ -295,7 +295,7 @@ class Reccurency(nn.Module):
                 score = scores_tensor[triple_idx]
                 all_scores[batch_idx, :] = torch.from_numpy(score).to(all_scores.device)
 
-        return all_scores
+        return all_scores, self.alpha
 
     def restructure_pickle_file(self,pickle_file: dict, num_rels: int) -> list:
         """
