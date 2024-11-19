@@ -654,6 +654,15 @@ class ICEWS0515(TransductiveTemporalDataset):
     name = "ICEWS0515"
     delimiter = "\t"
 
+class GDELT(TransductiveTemporalDataset):
+    urls = [
+        "https://raw.githubusercontent.com/zhangfw123/TLT-KGE/refs/heads/main/tkbc/src_data/gdelt/train",
+        "https://raw.githubusercontent.com/zhangfw123/TLT-KGE/refs/heads/main/tkbc/src_data/gdelt/valid",
+        "https://raw.githubusercontent.com/zhangfw123/TLT-KGE/refs/heads/main/tkbc/src_data/gdelt/test",
+    ]
+    name = "ICEWS0515"
+    delimiter = "\t"
+
 class smallpedia(TransductiveTemporalDataset):
     urls = [
         "https://raw.githubusercontent.com/shouhulantian/Ultra/main/datasets/smallpedia/train.txt",
