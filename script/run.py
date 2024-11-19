@@ -456,11 +456,11 @@ if __name__ == "__main__":
     test_data = test_data.to(device)
 
     if cfg.model.pop('class') == 'Ultra':
-        cfg.model.rule_model.num_relation = test_data.relation_graph.num_nodes
+        #cfg.model.rule_model.num_relation = test_data.relation_graph.num_nodes
         model = Ultra(
             rel_model_cfg=cfg.model.relation_model,
             entity_model_cfg=cfg.model.entity_model,
-            rule_model_cfg = cfg.model.rule_model
+            #rule_model_cfg = cfg.model.rule_model
         )
     else:
         cfg.model.entity_model.num_relation = dataset.num_relations
