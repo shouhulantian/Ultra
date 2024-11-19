@@ -22,10 +22,10 @@ class Ultra(nn.Module):
         # batch shape: (bs, 1+num_negs, 3)
         # relations are the same all positive and negative triples, so we can extract only one from the first triple among 1+nug_negs
         query_rels = batch[:, 0, 2]
-        score_rule, alpha = self.rule_model(data,batch)
+        #score_rule, alpha = self.rule_model(data,batch)
         relation_representations = self.relation_model(data.relation_graph, query=query_rels)
         score = self.entity_model(data, relation_representations, batch)
-        score = score_rule*alpha + score*(1-alpha)
+        #score = score_rule*alpha + score*(1-alpha)
         
         return score
 
