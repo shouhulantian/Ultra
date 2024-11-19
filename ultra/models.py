@@ -15,7 +15,7 @@ class Ultra(nn.Module):
 
         self.relation_model = RelNBFNet(**rel_model_cfg)
         self.entity_model = EntityNBFNet(**entity_model_cfg)
-        self.rule_model = Reccurency(**rule_model_cfg)
+        #self.rule_model = Reccurency(**rule_model_cfg)
         
     def forward(self, data, batch):
         
