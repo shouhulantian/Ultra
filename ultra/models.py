@@ -237,7 +237,7 @@ class EntityNBFNet(BaseNBFNet):
 
 class Reccurency(nn.Module):
 
-    def __init__(self, score_path,alpha, num_relation, **kwargs):
+    def __init__(self, score_path, num_relation, alpha=0,  **kwargs):
         # kept that because super Ultra sounds cool
         super(Reccurency, self).__init__()
 
