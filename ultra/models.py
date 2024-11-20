@@ -27,7 +27,8 @@ class Ultra(nn.Module):
         relation_representations = self.relation_model(data.relation_graph, query=query_rels)
         score = self.entity_model(data, relation_representations, batch)
         score_rule,alpha = self.rule_model(data,batch)
-        score = score_rule*alpha + score
+        if alpha!=0:
+            score = score_rule*alpha + score
         
         return score
 
