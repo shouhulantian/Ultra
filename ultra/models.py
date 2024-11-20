@@ -279,7 +279,7 @@ class Reccurency(nn.Module):
         # Convert to tensor for better visualization
         query_distributions = torch.stack(query_distributions)
         if torch.cuda.is_available():
-            query_distributions = query_distributions.cuda()
+            query_distributions = query_distributions.to(batch.device)
         freq_res = torch.softmax(query_distributions.float(), dim=1)
 
         return freq_res, self.alpha
