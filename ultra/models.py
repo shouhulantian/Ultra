@@ -265,7 +265,7 @@ class Reccurency(nn.Module):
             # Find edges that match the query start and label
             #matching_edges = (train_edges[0] == query_start) & (train_rels == query_label)
 
-            matching_edges = (train_edges[0] == query_start) & (train_rels == query_label)
+            matching_edges = (train_edges[0] == query_start)
 
             # Get the corresponding ending nodes
             ending_nodes = train_edges[1, matching_edges]
