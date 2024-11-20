@@ -687,7 +687,7 @@ class ICEWS18Ind(TransductiveTemporalDataset):
         "https://raw.githubusercontent.com/nec-research/recurrency_baseline_tkg/refs/heads/master/data/ICEWS18/valid.txt",
         "https://raw.githubusercontent.com/nec-research/recurrency_baseline_tkg/refs/heads/master/data/ICEWS18/test.txt",
     ]
-    name = "ICEWS14Ind"
+    name = "ICEWS18Ind"
     delimiter = "\t"
 
 class DBpedia100k(TransductiveDataset):
