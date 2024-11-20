@@ -460,7 +460,7 @@ if __name__ == "__main__":
         model = Ultra(
             rel_model_cfg=cfg.model.relation_model,
             entity_model_cfg=cfg.model.entity_model,
-            #rule_model_cfg = cfg.model.rule_model
+            rule_model_cfg = cfg.model.rule_model
         )
     else:
         cfg.model.entity_model.num_relation = dataset.num_relations
@@ -469,7 +469,7 @@ if __name__ == "__main__":
 
     if "checkpoint" in cfg and cfg.checkpoint is not None:
         state = torch.load(cfg.checkpoint, map_location="cpu")
-        model.load_state_dict(state["model"])
+        model.load_state_dict(state["model"],strict=False)
 
     #model = pyg.compile(model, dynamic=True)
     model = model.to(device)
