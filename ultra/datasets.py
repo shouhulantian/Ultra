@@ -681,6 +681,15 @@ class ICEWS14Ind(TransductiveTemporalDataset):
     name = "ICEWS14Ind"
     delimiter = "\t"
 
+class ICEWS18Ind(TransductiveTemporalDataset):
+    urls = [
+        "https://raw.githubusercontent.com/nec-research/recurrency_baseline_tkg/refs/heads/master/data/ICEWS18/train.txt",
+        "https://raw.githubusercontent.com/nec-research/recurrency_baseline_tkg/refs/heads/master/data/ICEWS18/valid.txt",
+        "https://raw.githubusercontent.com/nec-research/recurrency_baseline_tkg/refs/heads/master/data/ICEWS18/test.txt",
+    ]
+    name = "ICEWS14Ind"
+    delimiter = "\t"
+
 class DBpedia100k(TransductiveDataset):
     urls = [
         "https://raw.githubusercontent.com/iieir-km/ComplEx-NNE_AER/master/datasets/DB100K/_train.txt",
