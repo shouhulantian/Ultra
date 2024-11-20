@@ -263,9 +263,9 @@ class Reccurency(nn.Module):
             query_label = r_index[i,0]  # Edge label of the query
 
             # Find edges that match the query start and label
-            #matching_edges = (train_edges[0] == query_start) & (train_rels == query_label)
+            matching_edges = (train_edges[0] == query_start) & (train_rels == query_label)
 
-            matching_edges = (train_edges[0] == query_start)
+            #matching_edges = (train_edges[0] == query_start)
 
             # Get the corresponding ending nodes
             ending_nodes = train_edges[1, matching_edges]
