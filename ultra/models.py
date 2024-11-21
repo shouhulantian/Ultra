@@ -242,7 +242,6 @@ class Reccurency(nn.Module):
     def __init__(self, alpha=0,  **kwargs):
         # kept that because super Ultra sounds cool
         super(Reccurency, self).__init__()
-
         self.alpha = alpha
 
     def forward(self, data, batch):

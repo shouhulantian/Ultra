@@ -690,6 +690,26 @@ class ICEWS18Ind(TransductiveTemporalDataset):
     name = "ICEWS18Ind"
     delimiter = "\t"
 
+
+class YAGOInd(TransductiveTemporalDataset):
+    urls = [
+        "https://raw.githubusercontent.com/nec-research/recurrency_baseline_tkg/refs/heads/master/data/YAGO/train.txt",
+        "https://raw.githubusercontent.com/nec-research/recurrency_baseline_tkg/refs/heads/master/data/YAGO/valid.txt",
+        "https://raw.githubusercontent.com/nec-research/recurrency_baseline_tkg/refs/heads/master/data/YAGO/test.txt",
+    ]
+    name = "YAGOInd"
+    delimiter = "\t"
+
+
+class WIKIInd(TransductiveTemporalDataset):
+    urls = [
+        "https://raw.githubusercontent.com/nec-research/recurrency_baseline_tkg/refs/heads/master/data/WIKI/train.txt",
+        "https://raw.githubusercontent.com/nec-research/recurrency_baseline_tkg/refs/heads/master/data/WIKI/valid.txt",
+        "https://raw.githubusercontent.com/nec-research/recurrency_baseline_tkg/refs/heads/master/data/WIKI/test.txt",
+    ]
+    name = "WIKIInd"
+    delimiter = "\t"
+
 class DBpedia100k(TransductiveDataset):
     urls = [
         "https://raw.githubusercontent.com/iieir-km/ComplEx-NNE_AER/master/datasets/DB100K/_train.txt",
