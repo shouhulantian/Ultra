@@ -430,7 +430,7 @@ class TransductiveTemporalDataset(InMemoryDataset):
         num_time = test_results['num_time']
         #self.num_relations_real = num_relations
 
-        train_quadruples = train_results["quadruples"]
+        train_quadruples = train_results["quadruples"] + test_results["quadruples"]
         valid_quadruples = valid_results["quadruples"]
         test_quadruples = test_results["quadruples"]
 
