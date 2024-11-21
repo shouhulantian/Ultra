@@ -28,7 +28,7 @@ class Ultra(nn.Module):
         score = self.entity_model(data, relation_representations, batch)
         score_rule,alpha = self.rule_model(data,batch)
         if alpha!=0:
-            score = score_rule*alpha + score
+            score = score_rule*alpha + score * (1-alpha)
         
         return score
 
