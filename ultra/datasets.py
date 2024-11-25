@@ -644,6 +644,16 @@ class ICEWS14(TransductiveTemporalDataset):
     name = "ICEWS14"
     delimiter = "\t"
 
+class ICEWS14_sym(TransductiveTemporalDataset):
+
+    urls = [
+        "https://raw.githubusercontent.com/soledad921/ATISE/master/icews14/train.txt",
+        "https://raw.githubusercontent.com/soledad921/ATISE/master/icews14/valid.txt",
+        "https://raw.githubusercontent.com/shouhulantian/tkbc_time/refs/heads/main/icews14_symmetric_test.txt",
+        ]
+    name = "ICEWS14_sym"
+    delimiter = "\t"
+
 class ICEWS0515(TransductiveTemporalDataset):
 
     urls = [
@@ -698,6 +708,15 @@ class YAGOInd(TransductiveTemporalDataset):
         "https://raw.githubusercontent.com/nec-research/recurrency_baseline_tkg/refs/heads/master/data/YAGO/test.txt",
     ]
     name = "YAGOInd"
+    delimiter = "\t"
+
+class GDELTInd(TransductiveTemporalDataset):
+    urls = [
+        "https://raw.githubusercontent.com/nec-research/recurrency_baseline_tkg/refs/heads/master/data/GDELT/train.txt",
+        "https://raw.githubusercontent.com/nec-research/recurrency_baseline_tkg/refs/heads/master/data/GDELT/valid.txt",
+        "https://raw.githubusercontent.com/nec-research/recurrency_baseline_tkg/refs/heads/master/data/GDELT/test.txt",
+    ]
+    name = "GDELTInd"
     delimiter = "\t"
 
 
