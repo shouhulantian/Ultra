@@ -680,10 +680,10 @@ class ICEWS14_temporal_sym(TransductiveTemporalDataset):
     urls = [
         "https://raw.githubusercontent.com/soledad921/ATISE/master/icews14/train.txt",
         "https://raw.githubusercontent.com/soledad921/ATISE/master/icews14/valid.txt",
-        "https://raw.githubusercontent.com/shouhulantian/tkbc_time/refs/heads/main/icews14_temporal_symmetric_test.txt",
+        "https://raw.githubusercontent.com/shouhulantian/tkbc_time/refs/heads/main/set%20temporal%20symmetric.csv",
         ]
     name = "ICEWS14_temporal_sym"
-    delimiter = "\t"
+    delimiter = ","
 
 class ICEWS0515(TransductiveTemporalDataset):
 
