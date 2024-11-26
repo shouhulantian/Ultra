@@ -378,7 +378,7 @@ class TransductiveTemporalDataset(InMemoryDataset):
         with open(quadruple_file, "r", encoding="utf-8") as fin:
             for l in fin:
                 t_instance = l.split() if self.delimiter is None else l.strip().split(self.delimiter)
-                print(t_instance)
+                #print(t_instance)
                 if t_instance[0] not in inv_entity_vocab:
                     inv_entity_vocab[t_instance[0]] = entity_cnt
                     entity_cnt += 1
@@ -679,22 +679,22 @@ class ICEWS14_sym(TransductiveTemporalDataset):
 class ICEWS14_temporal_sym(TransductiveTemporalDataset):
 
     urls = [
-        "https://raw.githubusercontent.com/soledad921/ATISE/master/icews14/train.txt",
-        "https://raw.githubusercontent.com/soledad921/ATISE/master/icews14/valid.txt",
+        "https://raw.githubusercontent.com/shouhulantian/tkbc_time/refs/heads/main/set%20temporal%20symmetric.csv",
+        "https://raw.githubusercontent.com/shouhulantian/tkbc_time/refs/heads/main/set%20temporal%20symmetric.csv",
         "https://raw.githubusercontent.com/shouhulantian/tkbc_time/refs/heads/main/set%20temporal%20symmetric.csv",
         ]
     name = "ICEWS14_temporal_sym"
-    delimiter = "\t"
+    delimiter = ","
 
 class ICEWS14_temporal_inv(TransductiveTemporalDataset):
 
     urls = [
-        "https://raw.githubusercontent.com/soledad921/ATISE/master/icews14/train.txt",
-        "https://raw.githubusercontent.com/soledad921/ATISE/master/icews14/valid.txt",
+        "https://raw.githubusercontent.com/shouhulantian/tkbc_time/refs/heads/main/set%20temporal%20inverse.csv",
+        "https://raw.githubusercontent.com/shouhulantian/tkbc_time/refs/heads/main/set%20temporal%20inverse.csv",
         "https://raw.githubusercontent.com/shouhulantian/tkbc_time/refs/heads/main/set%20temporal%20inverse.csv",
         ]
     name = "ICEWS14_temporal_inv"
-    delimiter = "\t"
+    delimiter = ","
 
 class ICEWS0515(TransductiveTemporalDataset):
 
