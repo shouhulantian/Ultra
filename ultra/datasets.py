@@ -685,6 +685,16 @@ class ICEWS14_temporal_sym(TransductiveTemporalDataset):
     name = "ICEWS14_temporal_sym"
     delimiter = ","
 
+class ICEWS14_temporal_inv(TransductiveTemporalDataset):
+
+    urls = [
+        "https://raw.githubusercontent.com/soledad921/ATISE/master/icews14/train.txt",
+        "https://raw.githubusercontent.com/soledad921/ATISE/master/icews14/valid.txt",
+        "https://raw.githubusercontent.com/shouhulantian/tkbc_time/refs/heads/main/set%20temporal%20inverse.csv",
+        ]
+    name = "ICEWS14_temporal_inv"
+    delimiter = ","
+
 class ICEWS0515(TransductiveTemporalDataset):
 
     urls = [
