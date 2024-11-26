@@ -654,6 +654,16 @@ class ICEWS14RR(TransductiveTemporalDataset):
     name = "ICEWS14RR"
     delimiter = "\t"
 
+class ICEWS15RR(TransductiveTemporalDataset):
+
+    urls = [
+        "https://raw.githubusercontent.com/NacyNiko/naive_rule/refs/heads/main/src_data/ICEWS15RR/train",
+        "https://raw.githubusercontent.com/NacyNiko/naive_rule/refs/heads/main/src_data/ICEWS15RR/valid",
+        "https://raw.githubusercontent.com/NacyNiko/naive_rule/refs/heads/main/src_data/ICEWS15RR/test",
+        ]
+    name = "ICEWS15RR"
+    delimiter = "\t"
+
 class ICEWS14_sym(TransductiveTemporalDataset):
 
     urls = [
