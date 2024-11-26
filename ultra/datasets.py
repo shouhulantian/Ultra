@@ -664,6 +664,7 @@ class ICEWS15RR(TransductiveTemporalDataset):
     name = "ICEWS15RR"
     delimiter = "\t"
 
+
 class ICEWS14_sym(TransductiveTemporalDataset):
 
     urls = [
