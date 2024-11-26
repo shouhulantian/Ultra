@@ -683,7 +683,7 @@ class ICEWS14_temporal_sym(TransductiveTemporalDataset):
         "https://raw.githubusercontent.com/shouhulantian/tkbc_time/refs/heads/main/set%20temporal%20symmetric.csv",
         ]
     name = "ICEWS14_temporal_sym"
-    delimiter = ","
+    delimiter = "\t"
 
 class ICEWS14_temporal_inv(TransductiveTemporalDataset):
 
@@ -693,7 +693,7 @@ class ICEWS14_temporal_inv(TransductiveTemporalDataset):
         "https://raw.githubusercontent.com/shouhulantian/tkbc_time/refs/heads/main/set%20temporal%20inverse.csv",
         ]
     name = "ICEWS14_temporal_inv"
-    delimiter = ","
+    delimiter = "\t"
 
 class ICEWS0515(TransductiveTemporalDataset):
 
