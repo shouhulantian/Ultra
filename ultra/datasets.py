@@ -378,6 +378,7 @@ class TransductiveTemporalDataset(InMemoryDataset):
         with open(quadruple_file, "r", encoding="utf-8") as fin:
             for l in fin:
                 t_instance = l.split() if self.delimiter is None else l.strip().split(self.delimiter)
+                print(t_instance)
                 if t_instance[0] not in inv_entity_vocab:
                     inv_entity_vocab[t_instance[0]] = entity_cnt
                     entity_cnt += 1
