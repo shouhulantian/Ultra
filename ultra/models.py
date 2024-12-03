@@ -23,14 +23,20 @@ class Ultra(nn.Module):
         # batch shape: (bs, 1+num_negs, 3)
         # relations are the same all positive and negative triples, so we can extract only one from the first triple among 1+nug_negs
         query_rels = batch[:, 0, 2]
+        query_times = batch[:, 0, 3]
         #score_rule, alpha = self.rule_model(data,batch)
         relation_representations = self.relation_model(data.relation_graph, query=query_rels)
+        relation_graph_t = self.generate_graph_t(data.relation_graph, query_times)
+        relation_representations_t = self.relation_model(relation_graph_t, query_rels)
         score = self.entity_model(data, relation_representations, batch)
         score_rule,alpha = self.rule_model(data,batch)
         if alpha!=0:
             score = score_rule*alpha + score * (1-alpha)
         
         return score
+
+    def generate_graph_t(self, relation_graph, times, window_size=3):
+        pass
 
 # NBFNet to work on the graph of relations with 4 fundamental interactions
 # Doesn't have the final projection MLP from hidden dim -> 1, returns all node representations 
@@ -110,12 +116,13 @@ class RelNBFNet(BaseNBFNet):
 
 class EntityNBFNet(BaseNBFNet):
 
-    def __init__(self, input_dim, hidden_dims, use_time=False, num_relation=1, **kwargs):
+    def __init__(self, input_dim, hidden_dims, use_time='null', num_relation=1, **kwargs):
 
         # dummy num_relation = 1 as we won't use it in the NBFNet layer
         super().__init__(input_dim, hidden_dims, num_relation, **kwargs)
 
         self.layers = nn.ModuleList()
+        self.use_time = use_time
         for i in range(len(self.dims) - 1):
             self.layers.append(
                 layers.GeneralizedRelationalConv(
@@ -123,8 +130,9 @@ class EntityNBFNet(BaseNBFNet):
                     self.dims[0], self.message_func, self.aggregate_func, self.layer_norm,
                     self.activation, dependent=False, project_relations=True)
             )
-
         feature_dim = (sum(hidden_dims) if self.concat_hidden else hidden_dims[-1]) + input_dim
+        if self.use_time == 'concat':
+            feature_dim = feature_dim + self.dims[0]
         self.mlp = nn.Sequential()
         mlp = []
         for i in range(self.num_mlp_layers - 1):
@@ -132,7 +140,7 @@ class EntityNBFNet(BaseNBFNet):
             mlp.append(nn.ReLU())
         mlp.append(nn.Linear(feature_dim, 1))
         self.mlp = nn.Sequential(*mlp)
-        self.use_time = use_time
+
     
     def bellmanford(self, data, h_index, r_index, separate_grad=False):
         batch_size = len(r_index)
@@ -220,7 +228,7 @@ class EntityNBFNet(BaseNBFNet):
         # extract representations of tail entities from the updated node states
         feature = feature.gather(1, index)  # (batch_size, num_negative + 1, feature_dim)
 
-        if self.use_time:
+        if self.use_time == 'complex':
             freqs_cos, freqs_sin = self.precompute_freqs_cis(self.dims[0], data.num_time)
             freqs_cos = freqs_cos.to(time_index.device)
             freqs_sin = freqs_sin.to(time_index.device)
@@ -232,7 +240,12 @@ class EntityNBFNet(BaseNBFNet):
             feature_r_r = feature_r[:,:, :self.dims[0]//2] * freqs_cos - feature_r[:,:, self.dims[0]//2:] * freqs_sin
             feature_r_i = feature_r[:,:, :self.dims[0]//2] * freqs_sin + feature_r[:,:, self.dims[0]//2:] * freqs_cos
             feature = torch.cat([feature_h_r, feature_h_i,feature_r_r,feature_r_i],dim=-1)
-
+        elif self.use_time == 'concat':
+            freqs_cos, freqs_sin = self.precompute_freqs_cis(self.dims[0], data.num_time)
+            freqs_cos = freqs_cos.to(time_index.device)
+            freqs_sin = freqs_sin.to(time_index.device)
+            freqs_cos, freqs_sin = freqs_cos[time_index], freqs_sin[time_index]
+            feature = torch.cat([feature,freqs_cos,freqs_sin],dim=-1)
         # probability logit for each tail node in the batch
         # (batch_size, num_negative + 1, dim) -> (batch_size, num_negative + 1)
         score = self.mlp(feature).squeeze(-1)
