@@ -50,7 +50,7 @@ class Ultra(nn.Module):
             relation_graph_t.append(build_relation_graph(torch_geometric.data.Data(edge_index=edge_subset, edge_type= edge_type_subset,
                                                                                     num_nodes=data.num_nodes,
                                                                                     num_relations=data.num_relations,time_type=time_type_subset,
-                                                                                    num_time=data.num_time).to(times.device)))
+                                                                                    num_time=data.num_time)))
 
         return relation_graph_t
         # #train_data = Data(edge_index=train_edges, edge_type=train_etypes, num_nodes=num_node,
