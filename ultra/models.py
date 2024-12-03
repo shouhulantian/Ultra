@@ -2,10 +2,12 @@ import torch
 from torch import nn
 from . import tasks, layers
 from ultra.base_nbfnet import BaseNBFNet
+import torch_geometric
 import numpy as np
 import pickle
 from ultra.datasets import ICEWS14Ind
 #from ultra.util import tranform_reccurrency2ultra
+from ultra.tasks import build_relation_graph
 
 class Ultra(nn.Module):
 
@@ -25,9 +27,9 @@ class Ultra(nn.Module):
         query_rels = batch[:, 0, 2]
         query_times = batch[:, 0, 3]
         #score_rule, alpha = self.rule_model(data,batch)
-        relation_representations = self.relation_model(data.relation_graph, query=query_rels)
-        relation_graph_t = self.generate_graph_t(data.relation_graph, query_times)
-        #relation_representations_t = self.relation_model(relation_graph_t, query_rels)
+        relation_graph_t = self.generate_graph_t(data, query_times)
+        relation_representations = self.relation_model(data.relation_graph, query=query_rels, relation_graph_t=relation_graph_t)
+        #relation_representations_t = self.relation_model(data.relation_graph, query_rels, query_times)
         score = self.entity_model(data, relation_representations, batch)
         score_rule,alpha = self.rule_model(data,batch)
         if alpha!=0:
@@ -35,15 +37,32 @@ class Ultra(nn.Module):
         
         return score
 
-    def generate_graph_t(self, relation_graph, times, window_size=3):
-        pass
+    def generate_graph_t(self, data, times, window_size=3):
+        time_start = times - window_size
+        time_end = times + window_size
+
+        relation_graph_t = []
+        for i in range(times.shape[0]):
+            index = torch.ge(data.time_type, time_start[i]) & torch.le(data.time_type, time_end[i])
+            edge_subset = data.edge_index[:,index]
+            edge_type_subset=data.edge_type[index]
+            time_type_subset = data.time_type[index]
+            relation_graph_t.append( build_relation_graph(torch_geometric.data.Data(edge_index=edge_subset, edge_type= edge_type_subset,
+                                                                                    num_nodes=data.num_nodes,
+                                                                                    num_relations=data.num_relations,time_type=time_type_subset,
+                                                                                    num_time=data.num_time)))
+
+        return relation_graph_t
+        # #train_data = Data(edge_index=train_edges, edge_type=train_etypes, num_nodes=num_node,
+        #                   target_edge_index=train_target_edges, target_edge_type=train_target_etypes,
+        #                   num_relations=num_relations * 2, num_time=num_time, time_type=train_ttypes, target_time_type=train_target_ttypes)
 
 # NBFNet to work on the graph of relations with 4 fundamental interactions
 # Doesn't have the final projection MLP from hidden dim -> 1, returns all node representations 
 # of shape [bs, num_rel, hidden]
 class RelNBFNet(BaseNBFNet):
 
-    def __init__(self, input_dim, hidden_dims, num_relation=4, **kwargs):
+    def __init__(self, input_dim, hidden_dims, num_relation=4, time_graph = 'null', window_size=0 , **kwargs):
         super().__init__(input_dim, hidden_dims, num_relation, **kwargs)
 
         self.layers = nn.ModuleList()
@@ -54,9 +73,13 @@ class RelNBFNet(BaseNBFNet):
                     self.dims[0], self.message_func, self.aggregate_func, self.layer_norm,
                     self.activation, dependent=False)
                 )
+        self.time_graph = time_graph
+        self.window_size = window_size
 
         if self.concat_hidden:
             feature_dim = sum(hidden_dims) + input_dim
+            if time_graph != 'null':
+                feature_dim = feature_dim + self.dims[0]
             self.mlp = nn.Sequential(
                 nn.Linear(feature_dim, feature_dim),
                 nn.ReLU(),
@@ -65,10 +88,12 @@ class RelNBFNet(BaseNBFNet):
 
     
     def bellmanford(self, data, h_index, separate_grad=False):
-        batch_size = len(h_index)
-
+        try:
+            batch_size = len(h_index)
+        except:
+            batch_size = 1
         # initialize initial nodes (relations of interest in the batcj) with all ones
-        query = torch.ones(h_index.shape[0], self.dims[0], device=h_index.device, dtype=torch.float)
+        query = torch.ones(batch_size, self.dims[0], device=h_index.device, dtype=torch.float)
         index = h_index.unsqueeze(-1).expand_as(query)
 
         # initial (boundary) condition - initialize all node states as zeros
@@ -106,11 +131,16 @@ class RelNBFNet(BaseNBFNet):
             "edge_weights": edge_weights,
         }
 
-    def forward(self, rel_graph, query):
+    def forward(self, rel_graph, query, relation_graph_t=None):
 
         # message passing and updated node representations (that are in fact relations)
-        output = self.bellmanford(rel_graph, h_index=query)["node_feature"]  # (batch_size, num_nodes, hidden_dim）
-        
+        output = self.bellmanford(rel_graph, h_index=query)["node_feature"] # (batch_size, num_nodes, hidden_dim）
+        output_t = []
+        if self.time_graph == 'r_s_t_concat':
+            for i in range(len(relation_graph_t)):
+                output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i])["node_feature"])
+            output_t = torch.stack(output_t)
+            output = torch.cat([output, output_t],dim=-1)
         return output
     
 
