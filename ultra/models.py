@@ -134,13 +134,18 @@ class RelNBFNet(BaseNBFNet):
     def forward(self, rel_graph, query, relation_graph_t=None):
 
         # message passing and updated node representations (that are in fact relations)
-        output = self.bellmanford(rel_graph, h_index=query)["node_feature"] # (batch_size, num_nodes, hidden_dim）
-        output_t = []
         if self.time_graph == 'r_s_t_concat':
+            output = self.bellmanford(rel_graph, h_index=query)["node_feature"]  # (batch_size, num_nodes, hidden_dim）
+            output_t = []
             for i in range(len(relation_graph_t)):
                 output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i])["node_feature"])
             output_t = torch.stack(output_t).squeeze(dim=1)
             output = torch.cat([output, output_t],dim=-1)
+        if self.time_graph == 'r_t':
+            output_t = []
+            for i in range(len(relation_graph_t)):
+                output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i])["node_feature"])
+            output = torch.stack(output_t).squeeze(dim=1)
         return output
     
 
