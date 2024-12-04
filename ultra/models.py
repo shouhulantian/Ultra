@@ -183,6 +183,8 @@ class EntityNBFNet(BaseNBFNet):
         boundary = torch.zeros(batch_size, data.num_nodes, self.dims[0], device=h_index.device)
         # by the scatter operation we put query (relation) embeddings as init features of source (index) nodes
         boundary.scatter_add_(1, index.unsqueeze(1), query.unsqueeze(1))
+        if self.use_time:
+            pass
         
         size = (data.num_nodes, data.num_nodes)
         edge_weight = torch.ones(data.num_edges, device=h_index.device)

@@ -257,7 +257,7 @@ def build_relation_graph(graph):
     rel_graph = Data(
         edge_index=torch.cat([hh_edges[:, [0, 1]].T, tt_edges[:, [0, 1]].T, ht_edges[:, [0, 1]].T, th_edges[:, [0, 1]].T], dim=1), 
         edge_type=torch.cat([hh_edges[:, 2], tt_edges[:, 2], ht_edges[:, 2], th_edges[:, 2]], dim=0),
-        num_nodes=num_rels, 
+        num_nodes=int(num_rels),
         num_relations=4
     )
 
