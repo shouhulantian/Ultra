@@ -139,14 +139,14 @@ class RelNBFNet(BaseNBFNet):
         if self.time_graph == 'r_s_t_concat':
             for i in range(len(relation_graph_t)):
                 output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i])["node_feature"])
-            output_t = torch.stack(output_t)
+            output_t = torch.stack(output_t).squeeze(dim=1)
             output = torch.cat([output, output_t],dim=-1)
         return output
     
 
 class EntityNBFNet(BaseNBFNet):
 
-    def __init__(self, input_dim, hidden_dims, use_time='null', num_relation=1, **kwargs):
+    def __init__(self, input_dim, hidden_dims, use_time='null', num_relation=1, remove_edge='default', **kwargs):
 
         # dummy num_relation = 1 as we won't use it in the NBFNet layer
         super().__init__(input_dim, hidden_dims, num_relation, **kwargs)
@@ -170,6 +170,7 @@ class EntityNBFNet(BaseNBFNet):
             mlp.append(nn.ReLU())
         mlp.append(nn.Linear(feature_dim, 1))
         self.mlp = nn.Sequential(*mlp)
+        self.remove_edge = remove_edge
 
     
     def bellmanford(self, data, h_index, r_index, separate_grad=False):
@@ -245,7 +246,8 @@ class EntityNBFNet(BaseNBFNet):
             # Edge dropout in the training mode
             # here we want to remove immediate edges (head, relation, tail) from the edge_index and edge_types
             # to make NBFNet iteration learn non-trivial paths
-            data = self.remove_easy_edges(data, h_index, t_index, r_index)
+            if self.remove_edge == 'default':
+                data = self.remove_easy_edges(data, h_index, t_index, r_index)
 
         shape = h_index.shape
         # turn all triples in a batch into a tail prediction mode
