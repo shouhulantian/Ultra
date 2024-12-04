@@ -251,7 +251,9 @@ class EntityNBFNet(BaseNBFNet):
             # Edge dropout in the training mode
             # here we want to remove immediate edges (head, relation, tail) from the edge_index and edge_types
             # to make NBFNet iteration learn non-trivial paths
-            if self.remove_edge == 'default':
+            if self.remove_edge == 'time':
+                data = self.remove_easy_edges(data, h_index, t_index, r_index, time_index=time_index)
+            elif self.remove_edge == 'default':
                 data = self.remove_easy_edges(data, h_index, t_index, r_index)
 
         shape = h_index.shape

@@ -52,29 +52,53 @@ class BaseNBFNet(nn.Module):
             mlp.append(nn.Linear(feature_dim, 1))
             self.mlp = nn.Sequential(*mlp)
 
-    def remove_easy_edges(self, data, h_index, t_index, r_index=None):
+    def remove_easy_edges(self, data, h_index, t_index, r_index=None, time_index=None):
         # we remove training edges (we need to predict them at training time) from the edge index
         # think of it as a dynamic edge dropout
-        h_index_ext = torch.cat([h_index, t_index], dim=-1)
-        t_index_ext = torch.cat([t_index, h_index], dim=-1)
-        r_index_ext = torch.cat([r_index, r_index + data.num_relations // 2], dim=-1)
-        if self.remove_one_hop:
-            # we remove all existing immediate edges between heads and tails in the batch
-            edge_index = data.edge_index
-            easy_edge = torch.stack([h_index_ext, t_index_ext]).flatten(1)
-            index = tasks.edge_match(edge_index, easy_edge)[0]
-            mask = ~index_to_mask(index, data.num_edges)
-        else:
-            # we remove existing immediate edges between heads and tails in the batch with the given relation
-            edge_index = torch.cat([data.edge_index, data.edge_type.unsqueeze(0)])
-            # note that here we add relation types r_index_ext to the matching query
-            easy_edge = torch.stack([h_index_ext, t_index_ext, r_index_ext]).flatten(1)
-            index = tasks.edge_match(edge_index, easy_edge)[0]
-            mask = ~index_to_mask(index, data.num_edges)
+        if time_index is None:
+            h_index_ext = torch.cat([h_index, t_index], dim=-1)
+            t_index_ext = torch.cat([t_index, h_index], dim=-1)
+            r_index_ext = torch.cat([r_index, r_index + data.num_relations // 2], dim=-1)
+            if self.remove_one_hop:
+                # we remove all existing immediate edges between heads and tails in the batch
+                edge_index = data.edge_index
+                easy_edge = torch.stack([h_index_ext, t_index_ext]).flatten(1)
+                index = tasks.edge_match(edge_index, easy_edge)[0]
+                mask = ~index_to_mask(index, data.num_edges)
+            else:
+                # we remove existing immediate edges between heads and tails in the batch with the given relation
+                edge_index = torch.cat([data.edge_index, data.edge_type.unsqueeze(0)])
+                # note that here we add relation types r_index_ext to the matching query
+                easy_edge = torch.stack([h_index_ext, t_index_ext, r_index_ext]).flatten(1)
+                index = tasks.edge_match(edge_index, easy_edge)[0]
+                mask = ~index_to_mask(index, data.num_edges)
 
-        data = copy.copy(data)
-        data.edge_index = data.edge_index[:, mask]
-        data.edge_type = data.edge_type[mask]
+            data = copy.copy(data)
+            data.edge_index = data.edge_index[:, mask]
+            data.edge_type = data.edge_type[mask]
+        else:
+            h_index_ext = torch.cat([h_index, t_index], dim=-1)
+            t_index_ext = torch.cat([t_index, h_index], dim=-1)
+            r_index_ext = torch.cat([r_index, r_index + data.num_relations // 2], dim=-1)
+            time_index_ext = torch.cat([time_index, time_index], dim=-1)
+            if self.remove_one_hop:
+                # we remove all existing immediate edges between heads and tails in the batch
+                edge_index = data.edge_index
+                easy_edge = torch.stack([h_index_ext, t_index_ext,time_index_ext]).flatten(1)
+                index = tasks.edge_match(edge_index, easy_edge)[0]
+                mask = ~index_to_mask(index, data.num_edges)
+            else:
+                # we remove existing immediate edges between heads and tails in the batch with the given relation
+                edge_index = torch.cat([data.edge_index, data.edge_type.unsqueeze(0), data.time_type.unsqueeze(0)])
+                # note that here we add relation types r_index_ext to the matching query
+                easy_edge = torch.stack([h_index_ext, t_index_ext, r_index_ext,time_index_ext]).flatten(1)
+                index = tasks.edge_match(edge_index, easy_edge)[0]
+                mask = ~index_to_mask(index, data.num_edges)
+
+            data = copy.copy(data)
+            data.edge_index = data.edge_index[:, mask]
+            data.edge_type = data.edge_type[mask]
+
         return data
 
     def negative_sample_to_tail(self, h_index, t_index, r_index, num_direct_rel):
