@@ -141,11 +141,13 @@ class RelNBFNet(BaseNBFNet):
                 output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i])["node_feature"])
             output_t = torch.stack(output_t).squeeze(dim=1)
             output = torch.cat([output, output_t],dim=-1)
-        if self.time_graph == 'r_t':
+        elif self.time_graph == 'r_t':
             output_t = []
             for i in range(len(relation_graph_t)):
                 output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i])["node_feature"])
             output = torch.stack(output_t).squeeze(dim=1)
+        else:
+            output = self.bellmanford(rel_graph, h_index=query)["node_feature"]  # (batch_size, num_nodes, hidden_dim）
         return output
     
 
