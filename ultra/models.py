@@ -17,7 +17,7 @@ class Ultra(nn.Module):
 
         self.relation_model = RelNBFNet(**rel_model_cfg)
         self.entity_model = EntityNBFNet(**entity_model_cfg)
-        if rule_model_cfg:
+        if rule_model_cfg is not None:
             self.rule_model = Reccurency(**rule_model_cfg)
         
     def forward(self, data, batch):
@@ -86,8 +86,17 @@ class RelNBFNet(BaseNBFNet):
                 nn.Linear(feature_dim, input_dim)
             )
 
+        if 'ind' in self.time_graph:
+            self.layers_t = nn.ModuleList()
+            for i in range(len(self.dims) - 1):
+                self.layers_t.append(
+                    layers.GeneralizedRelationalConv(
+                        self.dims[i], self.dims[i + 1], num_relation,
+                        self.dims[0], self.message_func, self.aggregate_func, self.layer_norm,
+                        self.activation, dependent=False)
+                )
     
-    def bellmanford(self, data, h_index, separate_grad=False):
+    def bellmanford(self, data, h_index, nbf_layers='static', separate_grad=False):
         try:
             batch_size = len(h_index)
         except:
@@ -108,15 +117,26 @@ class RelNBFNet(BaseNBFNet):
         edge_weights = []
         layer_input = boundary
 
-        for layer in self.layers:
-            # Bellman-Ford iteration, we send the original boundary condition in addition to the updated node states
-            hidden = layer(layer_input, query, boundary, data.edge_index, data.edge_type, size, edge_weight)
-            if self.short_cut and hidden.shape == layer_input.shape:
-                # residual connection here
-                hidden = hidden + layer_input
-            hiddens.append(hidden)
-            edge_weights.append(edge_weight)
-            layer_input = hidden
+        if nbf_layers == 'static':
+            for layer in self.layers:
+                # Bellman-Ford iteration, we send the original boundary condition in addition to the updated node states
+                hidden = layer(layer_input, query, boundary, data.edge_index, data.edge_type, size, edge_weight)
+                if self.short_cut and hidden.shape == layer_input.shape:
+                    # residual connection here
+                    hidden = hidden + layer_input
+                hiddens.append(hidden)
+                edge_weights.append(edge_weight)
+                layer_input = hidden
+        else:
+            for layer in self.layers_t:
+                # Bellman-Ford iteration, we send the original boundary condition in addition to the updated node states
+                hidden = layer(layer_input, query, boundary, data.edge_index, data.edge_type, size, edge_weight)
+                if self.short_cut and hidden.shape == layer_input.shape:
+                    # residual connection here
+                    hidden = hidden + layer_input
+                hiddens.append(hidden)
+                edge_weights.append(edge_weight)
+                layer_input = hidden
 
         # original query (relation type) embeddings
         node_query = query.unsqueeze(1).expand(-1, data.num_nodes, -1) # (batch_size, num_nodes, input_dim)
@@ -134,17 +154,17 @@ class RelNBFNet(BaseNBFNet):
     def forward(self, rel_graph, query, relation_graph_t=None):
 
         # message passing and updated node representations (that are in fact relations)
-        if self.time_graph == 'r_s_t_concat':
+        if 'r_s_t_concat' in self.time_graph:
             output = self.bellmanford(rel_graph, h_index=query)["node_feature"]  # (batch_size, num_nodes, hidden_dim）
             output_t = []
             for i in range(len(relation_graph_t)):
-                output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i])["node_feature"])
+                output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i],nbf_layers='ind')["node_feature"])
             output_t = torch.stack(output_t).squeeze(dim=1)
             output = torch.cat([output, output_t],dim=-1)
-        elif self.time_graph == 'r_t':
+        elif 'r_t' in self.time_graph:
             output_t = []
             for i in range(len(relation_graph_t)):
-                output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i])["node_feature"])
+                output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i], nbf_layers='ind')["node_feature"])
             output = torch.stack(output_t).squeeze(dim=1)
         else:
             output = self.bellmanford(rel_graph, h_index=query)["node_feature"]  # (batch_size, num_nodes, hidden_dim）
