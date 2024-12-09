@@ -157,14 +157,22 @@ class RelNBFNet(BaseNBFNet):
         if 'r_s_t_concat' in self.time_graph:
             output = self.bellmanford(rel_graph, h_index=query)["node_feature"]  # (batch_size, num_nodes, hidden_dim）
             output_t = []
-            for i in range(len(relation_graph_t)):
-                output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i],nbf_layers='ind')["node_feature"])
+            if 'ind' in self.time_graph:
+                for i in range(len(relation_graph_t)):
+                    output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i],nbf_layers='ind')["node_feature"])
+            else:
+                for i in range(len(relation_graph_t)):
+                    output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i],nbf_layers='ind')["node_feature"])
             output_t = torch.stack(output_t).squeeze(dim=1)
             output = torch.cat([output, output_t],dim=-1)
         elif 'r_t' in self.time_graph:
             output_t = []
-            for i in range(len(relation_graph_t)):
-                output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i], nbf_layers='ind')["node_feature"])
+            if 'ind' in self.time_graph:
+                for i in range(len(relation_graph_t)):
+                    output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i],nbf_layers='ind')["node_feature"])
+            else:
+                for i in range(len(relation_graph_t)):
+                    output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i],nbf_layers='ind')["node_feature"])
             output = torch.stack(output_t).squeeze(dim=1)
         else:
             output = self.bellmanford(rel_graph, h_index=query)["node_feature"]  # (batch_size, num_nodes, hidden_dim）
