@@ -19,6 +19,7 @@ class Ultra(nn.Module):
         self.entity_model = EntityNBFNet(**entity_model_cfg)
         if rule_model_cfg is not None:
             self.rule_model = Reccurency(**rule_model_cfg)
+        self.window_size = rel_model_cfg['window_size']
         
     def forward(self, data, batch):
         
@@ -27,7 +28,7 @@ class Ultra(nn.Module):
         query_rels = batch[:, 0, 2]
         query_times = batch[:, 0, 3]
         #score_rule, alpha = self.rule_model(data,batch)
-        relation_graph_t = self.generate_graph_t(data, query_times)
+        relation_graph_t = self.generate_graph_t(data, query_times,self.window_size)
         relation_representations = self.relation_model(data.relation_graph, query=query_rels, relation_graph_t=relation_graph_t)
         #relation_representations_t = self.relation_model(data.relation_graph, query_rels, query_times)
         score = self.entity_model(data, relation_representations, batch)
