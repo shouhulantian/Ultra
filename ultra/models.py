@@ -32,9 +32,9 @@ class Ultra(nn.Module):
         relation_representations = self.relation_model(data.relation_graph, query=query_rels, relation_graph_t=relation_graph_t)
         #relation_representations_t = self.relation_model(data.relation_graph, query_rels, query_times)
         score = self.entity_model(data, relation_representations, batch)
-        score_rule,alpha = self.rule_model(data,batch)
-        if alpha!=0:
-            score = score_rule*alpha + score * (1-alpha)
+        # score_rule,alpha = self.rule_model(data,batch)
+        # if alpha!=0:
+        #     score = score_rule*alpha + score * (1-alpha)
         
         return score
 
@@ -163,7 +163,7 @@ class RelNBFNet(BaseNBFNet):
                     output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i],nbf_layers='ind')["node_feature"])
             else:
                 for i in range(len(relation_graph_t)):
-                    output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i],nbf_layers='ind')["node_feature"])
+                    output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i])["node_feature"])
             output_t = torch.stack(output_t).squeeze(dim=1)
             output = torch.cat([output, output_t],dim=-1)
         elif 'r_t' in self.time_graph:
@@ -173,7 +173,7 @@ class RelNBFNet(BaseNBFNet):
                     output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i],nbf_layers='ind')["node_feature"])
             else:
                 for i in range(len(relation_graph_t)):
-                    output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i],nbf_layers='ind')["node_feature"])
+                    output_t.append(self.bellmanford(relation_graph_t[i].relation_graph,h_index=query[i])["node_feature"])
             output = torch.stack(output_t).squeeze(dim=1)
         else:
             output = self.bellmanford(rel_graph, h_index=query)["node_feature"]  # (batch_size, num_nodes, hidden_dim）
@@ -194,7 +194,7 @@ class EntityNBFNet(BaseNBFNet):
                 layers.GeneralizedRelationalConv(
                     self.dims[i], self.dims[i + 1], num_relation,
                     self.dims[0], self.message_func, self.aggregate_func, self.layer_norm,
-                    self.activation, dependent=False, project_relations=True)
+                    self.activation, dependent=False, project_relations=True, time_dependent=False, project_times=True)
             )
         feature_dim = (sum(hidden_dims) if self.concat_hidden else hidden_dims[-1]) + input_dim
         if self.use_time == 'concat':
@@ -237,7 +237,7 @@ class EntityNBFNet(BaseNBFNet):
                 edge_weight = edge_weight.clone().requires_grad_()
 
             # Bellman-Ford iteration, we send the original boundary condition in addition to the updated node states
-            hidden = layer(layer_input, query, boundary, data.edge_index, data.edge_type, size, edge_weight)
+            hidden = layer(layer_input, query, boundary, data.edge_index, data.edge_type, size, edge_weight=edge_weight, time_type=data.time_type)
             if self.short_cut and hidden.shape == layer_input.shape:
                 # residual connection here
                 hidden = hidden + layer_input
@@ -278,6 +278,14 @@ class EntityNBFNet(BaseNBFNet):
         for layer in self.layers:
             layer.relation = relation_representations
 
+        if 'nbf' in self.use_time:
+            freqs_cos, freqs_sin = self.precompute_freqs_cis(self.dims[0], data.num_time)
+            freqs_cos = freqs_cos.to(time_index.device)
+            freqs_sin = freqs_sin.to(time_index.device)
+            #freqs_cos, freqs_sin = freqs_cos[time_index], freqs_sin[time_index]
+            for layer in self.layers:
+                layer.time = torch.cat([freqs_cos,freqs_sin],dim=-1).expand(batch.shape[0], -1, -1)
+
         if self.training:
             # Edge dropout in the training mode
             # here we want to remove immediate edges (head, relation, tail) from the edge_index and edge_types
@@ -300,7 +308,7 @@ class EntityNBFNet(BaseNBFNet):
         # extract representations of tail entities from the updated node states
         feature = feature.gather(1, index)  # (batch_size, num_negative + 1, feature_dim)
 
-        if self.use_time == 'complex':
+        if 'complex' in self.use_time:
             freqs_cos, freqs_sin = self.precompute_freqs_cis(self.dims[0], data.num_time)
             freqs_cos = freqs_cos.to(time_index.device)
             freqs_sin = freqs_sin.to(time_index.device)
@@ -312,7 +320,7 @@ class EntityNBFNet(BaseNBFNet):
             feature_r_r = feature_r[:,:, :self.dims[0]//2] * freqs_cos - feature_r[:,:, self.dims[0]//2:] * freqs_sin
             feature_r_i = feature_r[:,:, :self.dims[0]//2] * freqs_sin + feature_r[:,:, self.dims[0]//2:] * freqs_cos
             feature = torch.cat([feature_h_r, feature_h_i,feature_r_r,feature_r_i],dim=-1)
-        elif self.use_time == 'concat':
+        elif 'concat' in self.use_time:
             freqs_cos, freqs_sin = self.precompute_freqs_cis(self.dims[0], data.num_time)
             freqs_cos = freqs_cos.to(time_index.device)
             freqs_sin = freqs_sin.to(time_index.device)

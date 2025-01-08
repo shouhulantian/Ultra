@@ -76,6 +76,7 @@ class BaseNBFNet(nn.Module):
             data = copy.copy(data)
             data.edge_index = data.edge_index[:, mask]
             data.edge_type = data.edge_type[mask]
+            data.time_type = data.time_type[mask]
         else:
             h_index_ext = torch.cat([h_index, t_index], dim=-1)
             t_index_ext = torch.cat([t_index, h_index], dim=-1)
@@ -98,7 +99,7 @@ class BaseNBFNet(nn.Module):
             data = copy.copy(data)
             data.edge_index = data.edge_index[:, mask]
             data.edge_type = data.edge_type[mask]
-
+            data.time_type = data.time_type[mask]
         return data
 
     def negative_sample_to_tail(self, h_index, t_index, r_index, num_direct_rel):

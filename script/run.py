@@ -517,7 +517,7 @@ if __name__ == "__main__":
         logger.warning("Evaluate on test")
     if 'time_type' in dataset._data.keys():
         test_time(cfg, model, test_data, filtered_data=test_filtered_data, device=device, logger=logger)
-        test(cfg, model, test_data, filtered_data=test_filtered_data, device=device, logger=logger)
+        #test(cfg, model, test_data, filtered_data=test_filtered_data, device=device, logger=logger)
     else:
         test(cfg, model, test_data, filtered_data=test_filtered_data, device=device, logger=logger)
     if util.get_rank() == 0:

@@ -15,16 +15,17 @@ class GeneralizedRelationalConv(MessagePassing):
     message2mul = {
         "transe": "add",
         "distmult": "mul",
-        #"ttranse": "ttranse",
+        "ttranse": "ttranse",
         'dual':'dual',
-        'split':'split'
+        'split':'split',
+        'tcomplx': 'tcomplx'
     }
 
     # TODO for compile() - doesn't work currently
     # propagate_type = {"edge_index": torch.LongTensor, "size": Tuple[int, int]}
 
     def __init__(self, input_dim, output_dim, num_relation, query_input_dim, message_func="distmult",
-                 aggregate_func="pna", layer_norm=False, activation="relu", dependent=False, project_relations=False):
+                 aggregate_func="pna", layer_norm=False, activation="relu", dependent=False, project_relations=False,time_dependent=False,project_times=False,num_time=1):
         super(GeneralizedRelationalConv, self).__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
@@ -34,6 +35,9 @@ class GeneralizedRelationalConv(MessagePassing):
         self.aggregate_func = aggregate_func
         self.dependent = dependent
         self.project_relations = project_relations
+        self.num_time = num_time
+        self.time_dependent = time_dependent
+        self.project_times = project_times
 
         if layer_norm:
             self.layer_norm = nn.LayerNorm(output_dim)
@@ -65,8 +69,24 @@ class GeneralizedRelationalConv(MessagePassing):
                     nn.Linear(input_dim, input_dim)
                 )
 
+        if time_dependent:
+            # obtain relation embeddings as a projection of the query relation
+            self.time_linear = nn.Linear(query_input_dim, num_time * input_dim)
+        else:
+            if not self.project_times:
+                # relation embeddings as an independent embedding matrix per each layer
+                self.time = nn.Embedding(num_time, input_dim)
+            else:
+                # will be initialized after the pass over relation graph
+                self.time = None
+                self.time_projection = nn.Sequential(
+                    nn.Linear(input_dim, input_dim),
+                    nn.ReLU(),
+                    nn.Linear(input_dim, input_dim)
+                )
 
-    def forward(self, input, query, boundary, edge_index, edge_type, size, edge_weight=None):
+
+    def forward(self, input, query, boundary, edge_index, edge_type, size, edge_weight=None, time_type=None):
         batch_size = len(query)
 
         if self.dependent:
@@ -80,17 +100,31 @@ class GeneralizedRelationalConv(MessagePassing):
                 # NEW and only change: 
                 # projecting relation features to unique features for this layer, then resizing for the current batch
                 relation = self.relation_projection(self.relation)
+        if time_type is not None:
+            if self.time_dependent:
+                # layer-specific relation features as a projection of input "query" (relation) embeddings
+                time = self.time_linear(query).view(batch_size, self.num_time, self.input_dim)
+            else:
+                if not self.project_times:
+                    # layer-specific relation features as a special embedding matrix unique to each layer
+                    time = self.time.weight.expand(batch_size, -1, -1)
+                else:
+                    # NEW and only change:
+                    # projecting relation features to unique features for this layer, then resizing for the current batch
+                    time = self.time_projection(self.time)
+        else:
+            time = None
         if edge_weight is None:
             edge_weight = torch.ones(len(edge_type), device=input.device)
 
         # note that we send the initial boundary condition (node states at layer0) to the message passing
         # correspond to Eq.6 on p5 in https://arxiv.org/pdf/2106.06935.pdf
         output = self.propagate(input=input, relation=relation, boundary=boundary, edge_index=edge_index,
-                                edge_type=edge_type, size=size, edge_weight=edge_weight)
+                                edge_type=edge_type, size=size, edge_weight=edge_weight,time=time,time_type=time_type)
         return output
 
     def propagate(self, edge_index, size=None, **kwargs):
-        if kwargs["edge_weight"].requires_grad or self.message_func == "rotate" or self.message_func == 'dual' or self.message_func == 'split' or self.message_func == 'distmult':
+        if kwargs["edge_weight"].requires_grad or self.message_func in ["rotate",'dual' ,'split' ,'distmult','ttranse','tcomplx']:
             # the rspmm cuda kernel only works for TransE and DistMult message functions
             # otherwise we invoke separate message & aggregate functions
             return super(GeneralizedRelationalConv, self).propagate(edge_index, size, **kwargs)
@@ -128,9 +162,11 @@ class GeneralizedRelationalConv(MessagePassing):
 
         return out
 
-    def message(self, input_j, relation, boundary, edge_type):
+    def message(self, input_j, relation, boundary, edge_type, time=None, time_type=None):
         relation_j = relation.index_select(self.node_dim, edge_type)
 
+        if time is not None:
+            time_j = time.index_select(self.node_dim, time_type)
         if self.message_func == "transe":
             message = input_j + relation_j
         elif self.message_func == "distmult":
@@ -152,6 +188,15 @@ class GeneralizedRelationalConv(MessagePassing):
             r_j_re, r_j_im = relation_j.chunk(2, dim=-1)
             message_re = x_j_re * r_j_re
             message_im = x_j_re * r_j_im + x_j_im * r_j_re
+            message = torch.cat([message_re, message_im], dim=-1)
+        elif self.message_func == 'ttranse':
+            message = input_j + relation_j + time_j
+        elif self.message_func == 'tcomplx':
+            x_j_re, x_j_im = input_j.chunk(2, dim=-1)
+            r_j_re, r_j_im = relation_j.chunk(2, dim=-1)
+            t_j_re, t_j_im = time_j.chunk(2, dim=-1)
+            message_re = x_j_re*r_j_re*t_j_re - x_j_im*r_j_im*t_j_re - x_j_im*r_j_re*t_j_im - x_j_re * r_j_im*t_j_im
+            message_im = x_j_im*r_j_re*t_j_re + x_j_re*r_j_im*t_j_re + x_j_re*r_j_re*t_j_im - x_j_im*r_j_im*t_j_im
             message = torch.cat([message_re, message_im], dim=-1)
         else:
             raise ValueError("Unknown message function `%s`" % self.message_func)
