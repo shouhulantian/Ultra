@@ -182,7 +182,7 @@ class RelNBFNet(BaseNBFNet):
 
 class EntityNBFNet(BaseNBFNet):
 
-    def __init__(self, input_dim, hidden_dims, use_time='null', num_relation=1, remove_edge='default', **kwargs):
+    def __init__(self, input_dim, hidden_dims, use_time='null', num_relation=1, remove_edge='default', project_times=True, **kwargs):
 
         # dummy num_relation = 1 as we won't use it in the NBFNet layer
         super().__init__(input_dim, hidden_dims, num_relation, **kwargs)
@@ -194,7 +194,7 @@ class EntityNBFNet(BaseNBFNet):
                 layers.GeneralizedRelationalConv(
                     self.dims[i], self.dims[i + 1], num_relation,
                     self.dims[0], self.message_func, self.aggregate_func, self.layer_norm,
-                    self.activation, dependent=False, project_relations=True, time_dependent=False, project_times=True)
+                    self.activation, dependent=False, project_relations=True, time_dependent=False, project_times=project_times)
             )
         feature_dim = (sum(hidden_dims) if self.concat_hidden else hidden_dims[-1]) + input_dim
         if self.use_time == 'concat':
@@ -207,6 +207,7 @@ class EntityNBFNet(BaseNBFNet):
         mlp.append(nn.Linear(feature_dim, 1))
         self.mlp = nn.Sequential(*mlp)
         self.remove_edge = remove_edge
+        self.project_times = project_times
 
     
     def bellmanford(self, data, h_index, r_index, separate_grad=False):
@@ -284,7 +285,12 @@ class EntityNBFNet(BaseNBFNet):
             freqs_sin = freqs_sin.to(time_index.device)
             #freqs_cos, freqs_sin = freqs_cos[time_index], freqs_sin[time_index]
             for layer in self.layers:
-                layer.time = torch.cat([freqs_cos,freqs_sin],dim=-1).expand(batch.shape[0], -1, -1)
+                if self.project_times:
+                    layer.time = torch.cat([freqs_cos,freqs_sin],dim=-1).expand(batch.shape[0], -1, -1)
+                else:
+                    layer.num_time = int(data.num_time)
+                    layer.time = torch.nn.Embedding(layer.num_time, layer.input_dim)
+
 
         if self.training:
             # Edge dropout in the training mode
