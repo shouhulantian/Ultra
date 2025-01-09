@@ -289,7 +289,7 @@ class EntityNBFNet(BaseNBFNet):
                     layer.time = torch.cat([freqs_cos,freqs_sin],dim=-1).expand(batch.shape[0], -1, -1)
                 else:
                     layer.num_time = int(data.num_time)
-                    layer.time = torch.nn.Embedding(layer.num_time, layer.input_dim)
+                    layer.time = torch.nn.Embedding(layer.num_time, layer.input_dim).to(time_index.device)
 
 
         if self.training:
