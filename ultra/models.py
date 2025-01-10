@@ -182,7 +182,7 @@ class RelNBFNet(BaseNBFNet):
 
 class EntityNBFNet(BaseNBFNet):
 
-    def __init__(self, input_dim, hidden_dims, use_time='null', num_relation=1, remove_edge='default', project_times=True, **kwargs):
+    def __init__(self, input_dim, hidden_dims, use_time='null', num_relation=1, remove_edge='default', project_times=True, boundary='default' ,**kwargs):
 
         # dummy num_relation = 1 as we won't use it in the NBFNet layer
         super().__init__(input_dim, hidden_dims, num_relation, **kwargs)
@@ -208,6 +208,7 @@ class EntityNBFNet(BaseNBFNet):
         self.mlp = nn.Sequential(*mlp)
         self.remove_edge = remove_edge
         self.project_times = project_times
+        self.boundary = boundary
 
     
     def bellmanford(self, data, h_index, r_index, separate_grad=False):
@@ -220,9 +221,8 @@ class EntityNBFNet(BaseNBFNet):
         # initial (boundary) condition - initialize all node states as zeros
         boundary = torch.zeros(batch_size, data.num_nodes, self.dims[0], device=h_index.device)
         # by the scatter operation we put query (relation) embeddings as init features of source (index) nodes
-        boundary.scatter_add_(1, index.unsqueeze(1), query.unsqueeze(1))
-        if self.use_time:
-            pass
+        if self.boundary == 'default':
+            boundary.scatter_add_(1, index.unsqueeze(1), query.unsqueeze(1))
         
         size = (data.num_nodes, data.num_nodes)
         edge_weight = torch.ones(data.num_edges, device=h_index.device)
