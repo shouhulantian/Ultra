@@ -197,7 +197,7 @@ class EntityNBFNet(BaseNBFNet):
                     self.activation, dependent=False, project_relations=True, time_dependent=False, project_times=project_times)
             )
         feature_dim = (sum(hidden_dims) if self.concat_hidden else hidden_dims[-1]) + input_dim
-        if self.use_time == 'concat':
+        if 'concat' in self.use_time:
             feature_dim = feature_dim + self.dims[0]
         self.mlp = nn.Sequential()
         mlp = []
@@ -280,12 +280,12 @@ class EntityNBFNet(BaseNBFNet):
             layer.relation = relation_representations
 
         if 'nbf' in self.use_time:
-            freqs_cos, freqs_sin = self.precompute_freqs_cis(self.dims[0], data.num_time)
-            freqs_cos = freqs_cos.to(time_index.device)
-            freqs_sin = freqs_sin.to(time_index.device)
             #freqs_cos, freqs_sin = freqs_cos[time_index], freqs_sin[time_index]
             for layer in self.layers:
                 if self.project_times:
+                    freqs_cos, freqs_sin = self.precompute_freqs_cis(self.dims[0], data.num_time)
+                    freqs_cos = freqs_cos.to(time_index.device)
+                    freqs_sin = freqs_sin.to(time_index.device)
                     layer.time = torch.cat([freqs_cos,freqs_sin],dim=-1).expand(batch.shape[0], -1, -1)
                 else:
                     layer.num_time = int(data.num_time)
