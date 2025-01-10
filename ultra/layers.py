@@ -113,6 +113,8 @@ class GeneralizedRelationalConv(MessagePassing):
                     # projecting relation features to unique features for this layer, then resizing for the current batch
                     if self.time is not None:
                         time = self.time_projection(self.time)
+                    else:
+                        time = None
         else:
             time = None
         if edge_weight is None:
