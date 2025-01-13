@@ -166,7 +166,7 @@ class BaseNBFNet(nn.Module):
 
         shape = h_index.shape
         # turn all triples in a batch into a tail prediction mode
-        h_index, t_index, r_index = self.negative_sample_to_tail(h_index, t_index, r_index, num_direct_rel=data.num_relations // 2)
+        h_index, t_index, r_index, time_index = self.negative_sample_to_tail(h_index, t_index, r_index, time_index, num_direct_rel=data.num_relations // 2)
         assert (h_index[:, [0]] == h_index).all()
         assert (r_index[:, [0]] == r_index).all()
 

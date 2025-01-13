@@ -211,7 +211,7 @@ class EntityNBFNet(BaseNBFNet):
         self.boundary = boundary
 
     
-    def bellmanford(self, data, h_index, r_index, separate_grad=False):
+    def bellmanford(self, data, h_index, r_index, time_index=None, separate_grad=False):
         batch_size = len(r_index)
 
         # initialize queries (relation types of the given triples)
@@ -223,7 +223,12 @@ class EntityNBFNet(BaseNBFNet):
         # by the scatter operation we put query (relation) embeddings as init features of source (index) nodes
         if self.boundary == 'default':
             boundary.scatter_add_(1, index.unsqueeze(1), query.unsqueeze(1))
-        
+        elif 'time' in self.boundary:
+            boundary.scatter_add_(1, index.unsqueeze(1), query.unsqueeze(1))
+            index = time_index.unsqueeze(-1).expand_as(query)
+            query = self.time_query[torch.arange(batch_size, device=r_index.device), time_index]
+            boundary.scatter_add_(1, index.unsqueeze(1), query.unsqueeze(1))
+
         size = (data.num_nodes, data.num_nodes)
         edge_weight = torch.ones(data.num_edges, device=h_index.device)
 
@@ -274,6 +279,8 @@ class EntityNBFNet(BaseNBFNet):
 
         # initial query representations are those from the relation graph
         self.query = relation_representations
+        freqs_cos, freqs_sin = self.precompute_freqs_cis(self.dims[0], data.num_time)
+        self.time_query = torch.cat([freqs_cos, freqs_sin], dim=-1).expand(batch.shape[0], -1, -1)
 
         # initialize relations in each NBFNet layer (with uinque projection internally)
         for layer in self.layers:
@@ -308,7 +315,7 @@ class EntityNBFNet(BaseNBFNet):
         assert (r_index[:, [0]] == r_index).all()
 
         # message passing and updated node representations
-        output = self.bellmanford(data, h_index[:, 0], r_index[:, 0])  # (num_nodes, batch_size, feature_dim）
+        output = self.bellmanford(data, h_index[:, 0], r_index[:, 0],time_index=time_index[:,0])  # (num_nodes, batch_size, feature_dim）
         feature = output["node_feature"]
         index = t_index.unsqueeze(-1).expand(-1, -1, feature.shape[-1])
         # extract representations of tail entities from the updated node states
