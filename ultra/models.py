@@ -280,7 +280,7 @@ class EntityNBFNet(BaseNBFNet):
         # initial query representations are those from the relation graph
         self.query = relation_representations
         freqs_cos, freqs_sin = self.precompute_freqs_cis(self.dims[0], data.num_time)
-        self.time_query = torch.cat([freqs_cos, freqs_sin], dim=-1).expand(batch.shape[0], -1, -1)
+        self.time_query = torch.cat([freqs_cos, freqs_sin], dim=-1).expand(batch.shape[0], -1, -1).to(batch.device)
 
         # initialize relations in each NBFNet layer (with uinque projection internally)
         for layer in self.layers:
