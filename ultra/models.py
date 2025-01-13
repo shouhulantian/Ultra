@@ -225,7 +225,7 @@ class EntityNBFNet(BaseNBFNet):
             boundary.scatter_add_(1, index.unsqueeze(1), query.unsqueeze(1))
         elif 'time' in self.boundary:
             boundary.scatter_add_(1, index.unsqueeze(1), query.unsqueeze(1))
-            index = time_index.unsqueeze(-1).expand_as(query)
+            #index = time_index.unsqueeze(-1).expand_as(query)
             query = self.time_query[torch.arange(batch_size, device=r_index.device), time_index]
             boundary.scatter_add_(1, index.unsqueeze(1), query.unsqueeze(1))
 
