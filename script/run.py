@@ -208,6 +208,10 @@ def train_and_validate_time(cfg, model, train_data, valid_data, device, logger, 
             logger.warning(separator)
             logger.warning("Evaluate on valid")
         result = test_time(cfg, model, valid_data, filtered_data=filtered_data, device=device, logger=logger)
+        if rank == 0:
+            logger.warning(separator)
+            logger.warning("Evaluate on test")
+        result = test_time(cfg, model, test_data, filtered_data=filtered_data, device=device, logger=logger)
         if result > best_result:
             best_result = result
             best_epoch = epoch
