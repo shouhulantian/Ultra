@@ -280,8 +280,7 @@ class EntityNBFNet(BaseNBFNet):
         # initial query representations are those from the relation graph
         self.query = relation_representations
         freqs_cos, freqs_sin = self.precompute_freqs_cis(self.dims[0], data.num_time)
-        self.time_query = torch.cat([freqs_cos, freqs_sin], dim=-1).expand(batch.shape[0], -1, -1).to(batch.device)
-
+        #self.time_query = torch.cat([freqs_cos, freqs_sin], dim=-1).expand(batch.shape[0], -1, -1).to(batch.device)
         # initialize relations in each NBFNet layer (with uinque projection internally)
         for layer in self.layers:
             layer.relation = relation_representations
@@ -290,14 +289,11 @@ class EntityNBFNet(BaseNBFNet):
             #freqs_cos, freqs_sin = freqs_cos[time_index], freqs_sin[time_index]
             for layer in self.layers:
                 if self.project_times:
-                    freqs_cos, freqs_sin = self.precompute_freqs_cis(self.dims[0], data.num_time)
-                    freqs_cos = freqs_cos.to(time_index.device)
-                    freqs_sin = freqs_sin.to(time_index.device)
-                    layer.time = torch.cat([freqs_cos,freqs_sin],dim=-1).expand(batch.shape[0], -1, -1)
+                    layer.time = torch.cat([freqs_cos,freqs_sin],dim=-1).expand(batch.shape[0], -1, -1).to(batch.device)
                 else:
                     layer.num_time = int(data.num_time)
                     layer.time = torch.nn.Embedding(layer.num_time, layer.input_dim).to(time_index.device)
-
+        self.time_query = self.layers[0].time_projection(self.layers[0].time)
 
         if self.training:
             # Edge dropout in the training mode
