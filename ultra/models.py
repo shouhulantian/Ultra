@@ -182,7 +182,7 @@ class RelNBFNet(BaseNBFNet):
 
 class EntityNBFNet(BaseNBFNet):
 
-    def __init__(self, input_dim, hidden_dims, use_time='null', num_relation=1, num_time=365, remove_edge='default', project_times=True, boundary='default' ,**kwargs):
+    def __init__(self, input_dim, hidden_dims, use_time='null', num_relation=1, num_time=365, remove_edge='default', project_times=True, boundary='default', time_dependent=False, **kwargs):
 
         # dummy num_relation = 1 as we won't use it in the NBFNet layer
         super().__init__(input_dim, hidden_dims, num_relation, **kwargs)
@@ -194,7 +194,7 @@ class EntityNBFNet(BaseNBFNet):
                 layers.GeneralizedRelationalConv(
                     self.dims[i], self.dims[i + 1], num_relation,
                     self.dims[0], self.message_func, self.aggregate_func, self.layer_norm,
-                    self.activation, dependent=False, project_relations=True, time_dependent=False, project_times=project_times, num_time=num_time)
+                    self.activation, dependent=False, project_relations=True, time_dependent=time_dependent, project_times=project_times, num_time=num_time)
             )
         feature_dim = (sum(hidden_dims) if self.concat_hidden else hidden_dims[-1]) + input_dim
         if 'concat' in self.use_time:
@@ -210,9 +210,10 @@ class EntityNBFNet(BaseNBFNet):
         self.project_times = project_times
         self.boundary = boundary
         self.num_time = num_time
+        self.time_dependent = time_dependent
 
         if 'nbf' in self.use_time:
-            if not self.project_times:
+            if self.time_dependent or not self.project_times:
                 # relation embeddings as an independent embedding matrix per each layer
                 self.time_projection = nn.Embedding(self.num_time, input_dim)
             else:
@@ -238,7 +239,10 @@ class EntityNBFNet(BaseNBFNet):
         elif 'time' in self.boundary:
             boundary.scatter_add_(1, index.unsqueeze(1), query.unsqueeze(1))
             #index = time_index.unsqueeze(-1).expand_as(query)
-            query = self.time_query[torch.arange(batch_size, device=r_index.device), time_index]
+            if self.time_dependent or not self.project_times:
+                query = self.time_query(time_index)
+            else:
+                query = self.time_query[torch.arange(batch_size, device=r_index.device), time_index]
             boundary.scatter_add_(1, index.unsqueeze(1), query.unsqueeze(1))
 
         size = (data.num_nodes, data.num_nodes)
@@ -311,13 +315,13 @@ class EntityNBFNet(BaseNBFNet):
 
         if 'nbf' in self.use_time:
             #freqs_cos, freqs_sin = freqs_cos[time_index], freqs_sin[time_index]
-            if self.project_times:
+            if self.time_dependent or not self.project_times:
+                self.time_query = self.time_projection
+            else:
                 time_query = torch.cat([freqs_cos,freqs_sin],dim=-1).expand(batch.shape[0], -1, -1).to(batch.device)
                 self.time_query = self.time_projection(time_query)
                 for layer in self.layers:
                     layer.time = self.time_query
-            else:
-                self.time_query = self.time_projection
 
         if self.training:
             # Edge dropout in the training mode
