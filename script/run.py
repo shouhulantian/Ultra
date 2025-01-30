@@ -461,6 +461,7 @@ if __name__ == "__main__":
 
     if cfg.model.pop('class') == 'Ultra':
         #cfg.model.rule_model.num_relation = test_data.relation_graph.num_nodes
+        cfg.model.entity_model.num_time = int(test_data.num_time)
         model = Ultra(
             rel_model_cfg=cfg.model.relation_model,
             entity_model_cfg=cfg.model.entity_model,

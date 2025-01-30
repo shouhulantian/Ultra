@@ -182,7 +182,7 @@ class RelNBFNet(BaseNBFNet):
 
 class EntityNBFNet(BaseNBFNet):
 
-    def __init__(self, input_dim, hidden_dims, use_time='null', num_relation=1, remove_edge='default', project_times=True, boundary='default' ,**kwargs):
+    def __init__(self, input_dim, hidden_dims, use_time='null', num_relation=1, num_time=365, remove_edge='default', project_times=True, boundary='default' ,**kwargs):
 
         # dummy num_relation = 1 as we won't use it in the NBFNet layer
         super().__init__(input_dim, hidden_dims, num_relation, **kwargs)
@@ -194,7 +194,7 @@ class EntityNBFNet(BaseNBFNet):
                 layers.GeneralizedRelationalConv(
                     self.dims[i], self.dims[i + 1], num_relation,
                     self.dims[0], self.message_func, self.aggregate_func, self.layer_norm,
-                    self.activation, dependent=False, project_relations=True, time_dependent=False, project_times=project_times)
+                    self.activation, dependent=False, project_relations=True, time_dependent=False, project_times=project_times, num_time=num_time)
             )
         feature_dim = (sum(hidden_dims) if self.concat_hidden else hidden_dims[-1]) + input_dim
         if 'concat' in self.use_time:
@@ -209,19 +209,19 @@ class EntityNBFNet(BaseNBFNet):
         self.remove_edge = remove_edge
         self.project_times = project_times
         self.boundary = boundary
+        self.num_time = num_time
 
-        # if 'nbf' in self.use_time:
-        #     #freqs_cos, freqs_sin = freqs_cos[time_index], freqs_sin[time_index]
-        #     if self.project_times:
-        #         freqs_cos, freqs_sin = self.precompute_freqs_cis(self.dims[0], data.num_time)
-        #         for layer in self.layers:
-        #             layer.time = torch.cat([freqs_cos,freqs_sin],dim=-1).expand(batch.shape[0], -1, -1).to(batch.device)
-        #         self.time_query = self.layers[0].time_projection(self.layers[0].time)
-        #     else:
-        #         for layer in self.layers:
-        #             layer.num_time = int(data.num_time)
-        #             layer.time = torch.nn.Embedding(layer.num_time, layer.input_dim).to(time_index.device)
-        #         self.time_query = layer.time
+        if 'nbf' in self.use_time:
+            if not self.project_times:
+                # relation embeddings as an independent embedding matrix per each layer
+                self.time_projection = nn.Embedding(self.num_time, input_dim)
+            else:
+                # will be initialized after the pass over relation graph
+                self.time_projection = nn.Sequential(
+                    nn.Linear(input_dim, input_dim),
+                    nn.ReLU(),
+                    nn.Linear(input_dim, input_dim)
+                )
     
     def bellmanford(self, data, h_index, r_index, time_index=None, separate_grad=False):
         batch_size = len(r_index)
@@ -297,18 +297,27 @@ class EntityNBFNet(BaseNBFNet):
         for layer in self.layers:
             layer.relation = relation_representations
 
+        # if 'nbf' in self.use_time:
+        #     #freqs_cos, freqs_sin = freqs_cos[time_index], freqs_sin[time_index]
+        #     if self.project_times:
+        #         for layer in self.layers:
+        #             layer.time = torch.cat([freqs_cos,freqs_sin],dim=-1).expand(batch.shape[0], -1, -1).to(batch.device)
+        #         self.time_query = self.layers[0].time_projection(self.layers[0].time)
+        #     else:
+        #         for layer in self.layers:
+        #             layer.num_time = int(data.num_time)
+        #             layer.time = torch.nn.Embedding(layer.num_time, layer.input_dim).to(time_index.device)
+        #         self.time_query = layer.time
+
         if 'nbf' in self.use_time:
             #freqs_cos, freqs_sin = freqs_cos[time_index], freqs_sin[time_index]
             if self.project_times:
+                time_query = torch.cat([freqs_cos,freqs_sin],dim=-1).expand(batch.shape[0], -1, -1).to(batch.device)
+                self.time_query = self.time_projection(time_query)
                 for layer in self.layers:
-                    layer.time = torch.cat([freqs_cos,freqs_sin],dim=-1).expand(batch.shape[0], -1, -1).to(batch.device)
-                self.time_query = self.layers[0].time_projection(self.layers[0].time)
+                    layer.time = self.time_query
             else:
-                for layer in self.layers:
-                    layer.num_time = int(data.num_time)
-                    layer.time = torch.nn.Embedding(layer.num_time, layer.input_dim).to(time_index.device)
-                self.time_query = layer.time
-
+                self.time_query = self.time_projection
 
         if self.training:
             # Edge dropout in the training mode
