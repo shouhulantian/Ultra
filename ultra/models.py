@@ -210,6 +210,18 @@ class EntityNBFNet(BaseNBFNet):
         self.project_times = project_times
         self.boundary = boundary
 
+        # if 'nbf' in self.use_time:
+        #     #freqs_cos, freqs_sin = freqs_cos[time_index], freqs_sin[time_index]
+        #     if self.project_times:
+        #         freqs_cos, freqs_sin = self.precompute_freqs_cis(self.dims[0], data.num_time)
+        #         for layer in self.layers:
+        #             layer.time = torch.cat([freqs_cos,freqs_sin],dim=-1).expand(batch.shape[0], -1, -1).to(batch.device)
+        #         self.time_query = self.layers[0].time_projection(self.layers[0].time)
+        #     else:
+        #         for layer in self.layers:
+        #             layer.num_time = int(data.num_time)
+        #             layer.time = torch.nn.Embedding(layer.num_time, layer.input_dim).to(time_index.device)
+        #         self.time_query = layer.time
     
     def bellmanford(self, data, h_index, r_index, time_index=None, separate_grad=False):
         batch_size = len(r_index)
@@ -287,13 +299,16 @@ class EntityNBFNet(BaseNBFNet):
 
         if 'nbf' in self.use_time:
             #freqs_cos, freqs_sin = freqs_cos[time_index], freqs_sin[time_index]
-            for layer in self.layers:
-                if self.project_times:
+            if self.project_times:
+                for layer in self.layers:
                     layer.time = torch.cat([freqs_cos,freqs_sin],dim=-1).expand(batch.shape[0], -1, -1).to(batch.device)
-                else:
+                self.time_query = self.layers[0].time_projection(self.layers[0].time)
+            else:
+                for layer in self.layers:
                     layer.num_time = int(data.num_time)
                     layer.time = torch.nn.Embedding(layer.num_time, layer.input_dim).to(time_index.device)
-        self.time_query = self.layers[0].time_projection(self.layers[0].time)
+                self.time_query = layer.time
+
 
         if self.training:
             # Edge dropout in the training mode
