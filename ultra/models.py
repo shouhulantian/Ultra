@@ -20,6 +20,7 @@ class Ultra(nn.Module):
         if rule_model_cfg is not None:
             self.rule_model = Reccurency(**rule_model_cfg)
         self.window_size = rel_model_cfg['window_size']
+        self.mlp = nn.Linear(self.entity_model.dims[0]*4, 1)
         
     def forward(self, data, batch):
         
@@ -28,10 +29,19 @@ class Ultra(nn.Module):
         query_rels = batch[:, 0, 2]
         query_times = batch[:, 0, 3]
         #score_rule, alpha = self.rule_model(data,batch)
-        relation_graph_t = self.generate_graph_t(data, query_times,self.window_size)
-        relation_representations = self.relation_model(data.relation_graph, query=query_rels, relation_graph_t=relation_graph_t)
+        relation_representations = self.relation_model(data.relation_graph, query=query_rels)
+        score, output = self.entity_model(data, relation_representations, batch)
+        if self.window_size > 0:
+            entity_graph_t, relation_graph_t = self.generate_graph_t(data, query_times, self.window_size)
+            #relation_representations_t = self.relation_model(entity_graph_t[i].relation_graph, query=query_rels)
+            output_t = []
+            for i in range(len(entity_graph_t)):
+                _, output_t_ind = self.entity_model(entity_graph_t[i], relation_representations[i,:].unsqueeze(0), batch[i,:].unsqueeze(0))
+                output_t.append(output_t_ind)
+            output_t = torch.stack(output_t).squeeze(dim=1)
+            output = torch.cat([output, output_t], dim=-1)
+            score = self.mlp(output)
         #relation_representations_t = self.relation_model(data.relation_graph, query_rels, query_times)
-        score = self.entity_model(data, relation_representations, batch)
         # score_rule,alpha = self.rule_model(data,batch)
         # if alpha!=0:
         #     score = score_rule*alpha + score * (1-alpha)
@@ -43,17 +53,21 @@ class Ultra(nn.Module):
         time_end = times + window_size
 
         relation_graph_t = []
+        entity_graph_t = []
         for i in range(times.shape[0]):
             index = torch.ge(data.time_type, time_start[i]) & torch.le(data.time_type, time_end[i])
             edge_subset = data.edge_index[:,index]
             edge_type_subset=data.edge_type[index]
             time_type_subset = data.time_type[index]
-            relation_graph_t.append(build_relation_graph(torch_geometric.data.Data(edge_index=edge_subset, edge_type= edge_type_subset,
+            graph_t = torch_geometric.data.Data(edge_index=edge_subset, edge_type= edge_type_subset,
                                                                                     num_nodes=data.num_nodes,
                                                                                     num_relations=data.num_relations,time_type=time_type_subset,
-                                                                                    num_time=data.num_time)))
+                                                                                    num_time=data.num_time)
+            graph_t.relation_graph = build_relation_graph(graph_t)
+            entity_graph_t.append(graph_t)
+            relation_graph_t.append(graph_t.relation_graph)
 
-        return relation_graph_t
+        return entity_graph_t, relation_graph_t
         # #train_data = Data(edge_index=train_edges, edge_type=train_etypes, num_nodes=num_node,
         #                   target_edge_index=train_target_edges, target_edge_type=train_target_etypes,
         #                   num_relations=num_relations * 2, num_time=num_time, time_type=train_ttypes, target_time_type=train_target_ttypes)
@@ -225,7 +239,10 @@ class EntityNBFNet(BaseNBFNet):
                 )
     
     def bellmanford(self, data, h_index, r_index, time_index=None, separate_grad=False):
-        batch_size = len(r_index)
+        try:
+            batch_size = len(h_index)
+        except:
+            batch_size = 1
 
         # initialize queries (relation types of the given triples)
         query = self.query[torch.arange(batch_size, device=r_index.device), r_index]
@@ -287,7 +304,7 @@ class EntityNBFNet(BaseNBFNet):
         freqs_sin = torch.sin(freqs)  # imaginary part
         return freqs_cos, freqs_sin
 
-    def forward(self, data, relation_representations, batch):
+    def forward(self, data, relation_representations, batch, entity_graph_t=None):
         if batch.shape[2] == 3:
             h_index, t_index, r_index = batch.unbind(-1)
         else:
@@ -338,9 +355,27 @@ class EntityNBFNet(BaseNBFNet):
         assert (h_index[:, [0]] == h_index).all()
         assert (r_index[:, [0]] == r_index).all()
 
+        # # message passing and updated node representations
+        # output = self.bellmanford(data, h_index[:, 0], r_index[:, 0],time_index=time_index[:,0])  # (num_nodes, batch_size, feature_dim）
+
         # message passing and updated node representations
-        output = self.bellmanford(data, h_index[:, 0], r_index[:, 0],time_index=time_index[:,0])  # (num_nodes, batch_size, feature_dim）
-        feature = output["node_feature"]
+        if 'r_s_t_concat' in self.use_time:
+            output = self.bellmanford(data, h_index[:, 0], r_index[:, 0],time_index=time_index[:,0])  # (batch_size, num_nodes, hidden_dim）
+            output_t = []
+            for i in range(len(entity_graph_t)):
+                output_t.append(self.bellmanford(entity_graph_t[i], h_index[i, 0], r_index[i, 0],time_index=time_index[i,0])["node_feature"])
+            output_t = torch.stack(output_t).squeeze(dim=1)
+            output = torch.cat([output, output_t],dim=-1)
+        elif 'r_t' in self.use_time:
+            output_t = []
+            for i in range(len(entity_graph_t)):
+                output_t.append(self.bellmanford(entity_graph_t[i], h_index[i, 0], r_index[i, 0],time_index=time_index[i,0])["node_feature"])
+            output = torch.stack(output_t).squeeze(dim=1)
+        else:
+            output = self.bellmanford(data, h_index[:, 0], r_index[:, 0],
+                                      time_index=time_index[:, 0])["node_feature"]  # (num_nodes, batch_size, feature_dim）
+
+        feature = output
         index = t_index.unsqueeze(-1).expand(-1, -1, feature.shape[-1])
         # extract representations of tail entities from the updated node states
         feature = feature.gather(1, index)  # (batch_size, num_negative + 1, feature_dim)
@@ -366,7 +401,7 @@ class EntityNBFNet(BaseNBFNet):
         # probability logit for each tail node in the batch
         # (batch_size, num_negative + 1, dim) -> (batch_size, num_negative + 1)
         score = self.mlp(feature).squeeze(-1)
-        return score.view(shape)
+        return score.view(shape), output
 
 class Reccurency(nn.Module):
     def __init__(self, alpha=0,  **kwargs):
