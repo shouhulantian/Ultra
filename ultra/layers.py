@@ -18,7 +18,8 @@ class GeneralizedRelationalConv(MessagePassing):
         "ttranse": "ttranse",
         'dual':'dual',
         'split':'split',
-        'tcomplx': 'tcomplx'
+        'tcomplx': 'tcomplx',
+        'tntcomplx':'tntcomplx'
     }
 
     # TODO for compile() - doesn't work currently
@@ -127,7 +128,7 @@ class GeneralizedRelationalConv(MessagePassing):
         return output
 
     def propagate(self, edge_index, size=None, **kwargs):
-        if kwargs["edge_weight"].requires_grad or self.message_func in ["rotate",'dual' ,'split' ,'distmult','ttranse','tcomplx']:
+        if kwargs["edge_weight"].requires_grad or self.message_func in ["rotate",'dual' ,'split' ,'distmult','ttranse','tcomplx','tntcomplx']:
             # the rspmm cuda kernel only works for TransE and DistMult message functions
             # otherwise we invoke separate message & aggregate functions
             return super(GeneralizedRelationalConv, self).propagate(edge_index, size, **kwargs)
@@ -201,6 +202,17 @@ class GeneralizedRelationalConv(MessagePassing):
             message_re = x_j_re*r_j_re*t_j_re - x_j_im*r_j_im*t_j_re - x_j_im*r_j_re*t_j_im - x_j_re * r_j_im*t_j_im
             message_im = x_j_im*r_j_re*t_j_re + x_j_re*r_j_im*t_j_re + x_j_re*r_j_re*t_j_im - x_j_im*r_j_im*t_j_im
             message = torch.cat([message_re, message_im], dim=-1)
+        elif self.message_func == 'tntcomplx':
+            x_j_re, x_j_im = input_j.chunk(2, dim=-1)
+            r_j_re, r_j_im = relation_j.chunk(2, dim=-1)
+            t_j_re, t_j_im = time_j.chunk(2, dim=-1)
+            rt = r_j_re*t_j_re, r_j_im*t_j_re, r_j_re*t_j_im, r_j_im*t_j_im
+            full_rel =  (rt[0] - rt[3]) + r_j_re, (rt[1] + rt[2]) + r_j_im
+            message_re = x_j_re * full_rel[0] - x_j_im * full_rel[1]
+            message_im = x_j_im * full_rel[0] + x_j_re * full_rel[1]
+            message = torch.cat([message_re, message_im], dim=-1)
+        elif self.message_func == 'tero':
+            pass
         else:
             raise ValueError("Unknown message function `%s`" % self.message_func)
 
