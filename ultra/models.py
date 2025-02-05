@@ -40,7 +40,7 @@ class Ultra(nn.Module):
                 output_t.append(output_t_ind)
             output_t = torch.stack(output_t).squeeze(dim=1)
             output = torch.cat([output, output_t], dim=-1)
-            score = self.mlp(output)
+            score = self.mlp(output).squeeze(-1)
         #relation_representations_t = self.relation_model(data.relation_graph, query_rels, query_times)
         # score_rule,alpha = self.rule_model(data,batch)
         # if alpha!=0:
