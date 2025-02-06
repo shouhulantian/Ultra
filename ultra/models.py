@@ -39,6 +39,7 @@ class Ultra(nn.Module):
             for i in range(len(entity_graph_t)):
                 score_t_ind, output_t_ind = self.entity_model(entity_graph_t[i], relation_representations[i,:].unsqueeze(0), batch[i,:].unsqueeze(0))
                 output_t.append(output_t_ind)
+                score_t.append(score_t_ind)
             output_t = torch.stack(output_t).squeeze(dim=1)
             score_t = torch.stack(score_t).squeeze(dim=1)
             output = torch.cat([output, output_t], dim=-1)
