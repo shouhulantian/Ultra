@@ -35,10 +35,12 @@ class Ultra(nn.Module):
             entity_graph_t, relation_graph_t = self.generate_graph_t(data, query_times, self.window_size)
             #relation_representations_t = self.relation_model(entity_graph_t[i].relation_graph, query=query_rels)
             output_t = []
+            score_t = []
             for i in range(len(entity_graph_t)):
-                _, output_t_ind = self.entity_model(entity_graph_t[i], relation_representations[i,:].unsqueeze(0), batch[i,:].unsqueeze(0))
+                score_t_ind, output_t_ind = self.entity_model(entity_graph_t[i], relation_representations[i,:].unsqueeze(0), batch[i,:].unsqueeze(0))
                 output_t.append(output_t_ind)
             output_t = torch.stack(output_t).squeeze(dim=1)
+            score_t = torch.stack(score_t).squeeze(dim=1)
             output = torch.cat([output, output_t], dim=-1)
             score = self.mlp(output).squeeze(-1)
         #relation_representations_t = self.relation_model(data.relation_graph, query_rels, query_times)
@@ -46,7 +48,7 @@ class Ultra(nn.Module):
         # if alpha!=0:
         #     score = score_rule*alpha + score * (1-alpha)
         
-        return score
+        return score_t
 
     def generate_graph_t(self, data, times, window_size=3):
         time_start = times - window_size
