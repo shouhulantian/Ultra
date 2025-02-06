@@ -20,7 +20,14 @@ class Ultra(nn.Module):
         if rule_model_cfg is not None:
             self.rule_model = Reccurency(**rule_model_cfg)
         self.window_size = rel_model_cfg['window_size']
-        self.mlp = nn.Linear(self.entity_model.dims[0]*4, 1)
+        feature_dim = self.entity_model.dims[0]*4
+        self.mlp = nn.Sequential()
+        mlp = []
+        for i in range(self.num_mlp_layers - 1):
+            mlp.append(nn.Linear(feature_dim, feature_dim))
+            mlp.append(nn.ReLU())
+        mlp.append(nn.Linear(feature_dim, 1))
+        self.mlp = nn.Sequential(*mlp)
         
     def forward(self, data, batch):
         
@@ -49,7 +56,7 @@ class Ultra(nn.Module):
         # if alpha!=0:
         #     score = score_rule*alpha + score * (1-alpha)
         
-        return score_t
+        return score
 
     def generate_graph_t(self, data, times, window_size=3):
         time_start = times - window_size
