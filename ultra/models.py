@@ -23,7 +23,7 @@ class Ultra(nn.Module):
         feature_dim = self.entity_model.dims[0]*4
         self.mlp = nn.Sequential()
         mlp = []
-        for i in range(self.num_mlp_layers - 1):
+        for i in range(1):
             mlp.append(nn.Linear(feature_dim, feature_dim))
             mlp.append(nn.ReLU())
         mlp.append(nn.Linear(feature_dim, 1))
