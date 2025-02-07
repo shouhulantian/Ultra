@@ -20,15 +20,16 @@ class Ultra(nn.Module):
         if rule_model_cfg is not None:
             self.rule_model = Reccurency(**rule_model_cfg)
         self.window_size = rel_model_cfg['window_size']
-        if self.window_size>0:
-            feature_dim = self.entity_model.dims[0]*4
-            self.mlp = nn.Sequential()
-            mlp = []
-            for i in range(1):
-                mlp.append(nn.Linear(feature_dim, feature_dim))
-                mlp.append(nn.ReLU())
-            mlp.append(nn.Linear(feature_dim, 1))
-            self.mlp = nn.Sequential(*mlp)
+        self.alpha = entity_model_cfg['alpha']
+        # if self.window_size>0:
+        #     feature_dim = self.entity_model.dims[0]*4
+        #     self.mlp = nn.Sequential()
+        #     mlp = []
+        #     for i in range(1):
+        #         mlp.append(nn.Linear(feature_dim, feature_dim))
+        #         mlp.append(nn.ReLU())
+        #     mlp.append(nn.Linear(feature_dim, 1))
+        #     self.mlp = nn.Sequential(*mlp)
         
     def forward(self, data, batch):
         
@@ -50,13 +51,12 @@ class Ultra(nn.Module):
                 score_t.append(score_t_ind)
             output_t = torch.stack(output_t).squeeze(dim=1)
             score_t = torch.stack(score_t).squeeze(dim=1)
-            output = torch.cat([output, output_t], dim=-1)
-            score = self.mlp(output).squeeze(-1)
+            #output = torch.cat([output, output_t], dim=-1)
+            #score = self.mlp(output).squeeze(-1)
         #relation_representations_t = self.relation_model(data.relation_graph, query_rels, query_times)
         # score_rule,alpha = self.rule_model(data,batch)
-        # if alpha!=0:
-        #     score = score_rule*alpha + score * (1-alpha)
-        
+            if self.alpha!=0:
+                score = score_t*self.alpha + score * (1-self.alpha)
         return score
 
     def generate_graph_t(self, data, times, window_size=3):
@@ -343,7 +343,10 @@ class EntityNBFNet(BaseNBFNet):
 
         if 'nbf' in self.use_time:
             #freqs_cos, freqs_sin = freqs_cos[time_index], freqs_sin[time_index]
-            if self.time_dependent or not self.project_times:
+            if 'naive' in self.use_time:
+                self.time_query = torch.cat([freqs_cos, freqs_sin], dim=-1).expand(batch.shape[0], -1, -1).to(
+                    batch.device)
+            elif self.time_dependent or not self.project_times:
                 self.time_query = self.time_projection
             else:
                 time_query = torch.cat([freqs_cos,freqs_sin],dim=-1).expand(batch.shape[0], -1, -1).to(batch.device)
