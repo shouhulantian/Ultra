@@ -21,6 +21,7 @@ class Ultra(nn.Module):
             self.rule_model = Reccurency(**rule_model_cfg)
         self.window_size = rel_model_cfg['window_size']
         self.alpha = entity_model_cfg['alpha']
+        self.multi_hop = entity_model_cfg['multi_hop']
         # if self.window_size>0:
         #     feature_dim = self.entity_model.dims[0]*4
         #     self.mlp = nn.Sequential()
@@ -38,8 +39,22 @@ class Ultra(nn.Module):
         query_rels = batch[:, 0, 2]
         query_times = batch[:, 0, 3]
         #score_rule, alpha = self.rule_model(data,batch)
-        relation_representations = self.relation_model(data.relation_graph, query=query_rels)
-        score, output = self.entity_model(data, relation_representations, batch)
+        if self.multi_hop == 0:
+            relation_representations = self.relation_model(data.relation_graph, query=query_rels)
+            score, output = self.entity_model(data, relation_representations, batch)
+        else:
+            relation_representations = self.relation_model(data.relation_graph, query=query_rels)
+            entity_graph_g, relation_graph_g = self.generate_graph_global(data, batch, self.multi_hop)
+            output = []
+            score = []
+            for i in range(len(entity_graph_g)):
+                score_t_ind, output_t_ind = self.entity_model(entity_graph_g[i],
+                                                              relation_representations[i, :].unsqueeze(0),
+                                                              batch[i, :].unsqueeze(0))
+                output.append(output_t_ind)
+                score.append(score_t_ind)
+            output = torch.stack(output).squeeze(dim=1)
+            score = torch.stack(score).squeeze(dim=1)
         if self.window_size > 0:
             entity_graph_t, relation_graph_t = self.generate_graph_t(data, query_times, self.window_size)
             #relation_representations_t = self.relation_model(entity_graph_t[i].relation_graph, query=query_rels)
@@ -82,6 +97,29 @@ class Ultra(nn.Module):
         # #train_data = Data(edge_index=train_edges, edge_type=train_etypes, num_nodes=num_node,
         #                   target_edge_index=train_target_edges, target_edge_type=train_target_etypes,
         #                   num_relations=num_relations * 2, num_time=num_time, time_type=train_ttypes, target_time_type=train_target_ttypes)
+
+    def generate_graph_global(self, data, batch, multi_hop=3):
+        r_index = batch[:, 0, 2]
+        h_index = batch[:, 0, 0]
+
+        relation_graph_g = []
+        entity_graph_g = []
+        for i in range(len(h_index)):
+            subset, edge_index, mapping, edge_mask = torch_geometric.utils.k_hop_subgraph(h_index[i],multi_hop, data.edge_index)
+            relation_mask = data.edge_type == r_index[i]
+            index = edge_mask & relation_mask
+            edge_subset = data.edge_index[:,index]
+            edge_type_subset=data.edge_type[index]
+            time_type_subset = data.time_type[index]
+            graph_t = torch_geometric.data.Data(edge_index=edge_subset, edge_type= edge_type_subset,
+                                                                                    num_nodes=data.num_nodes,
+                                                                                    num_relations=data.num_relations,time_type=time_type_subset,
+                                                                                    num_time=data.num_time)
+            graph_t.relation_graph = build_relation_graph(graph_t)
+            entity_graph_g.append(graph_t)
+            relation_graph_g.append(graph_t.relation_graph)
+
+        return entity_graph_g, relation_graph_g
 
 # NBFNet to work on the graph of relations with 4 fundamental interactions
 # Doesn't have the final projection MLP from hidden dim -> 1, returns all node representations 
@@ -272,6 +310,8 @@ class EntityNBFNet(BaseNBFNet):
             else:
                 query = self.time_query[torch.arange(batch_size, device=r_index.device), time_index]
             boundary.scatter_add_(1, index.unsqueeze(1), query.unsqueeze(1))
+        elif 'concur' in self.boundary:
+            pass
 
         size = (data.num_nodes, data.num_nodes)
         edge_weight = torch.ones(data.num_edges, device=h_index.device)
