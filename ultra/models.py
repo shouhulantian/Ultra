@@ -101,13 +101,18 @@ class Ultra(nn.Module):
     def generate_graph_global(self, data, batch, multi_hop=3):
         r_index = batch[:, 0, 2]
         h_index = batch[:, 0, 0]
+        t_index = batch[:, 0, 1]
 
         relation_graph_g = []
         entity_graph_g = []
         for i in range(len(h_index)):
-            subset, edge_index, mapping, edge_mask = torch_geometric.utils.k_hop_subgraph(h_index[i],multi_hop, data.edge_index)
+            if i < len(h_index) // 2:
+                target_node = h_index[i]
+            else:
+                target_node = t_index[i]
+            subset, edge_index, mapping, edge_mask = torch_geometric.utils.k_hop_subgraph(int(target_node),multi_hop, data.edge_index)
             relation_mask = data.edge_type == r_index[i]
-            index = edge_mask & relation_mask
+            index = edge_mask | relation_mask
             edge_subset = data.edge_index[:,index]
             edge_type_subset=data.edge_type[index]
             time_type_subset = data.time_type[index]
@@ -478,22 +483,38 @@ class Reccurency(nn.Module):
 
         # Iterate through each query
         for i in range(batch.size(0)):
-            query_start = h_index[i,0]  # Starting node of the query
-            query_label = r_index[i,0]  # Edge label of the query
+            if i < batch.size(0) // 2:
+                query_start = h_index[i,0]  # Starting node of the query
+                query_label = r_index[i,0]  # Edge label of the query
 
-            # Find edges that match the query start and label
-            matching_edges = (train_edges[0] == query_start) & (train_rels == query_label)
+                # Find edges that match the query start and label
+                matching_edges = (train_edges[0] == query_start) & (train_rels == query_label)
 
-            #matching_edges = (train_edges[0] == query_start)
+                #matching_edges = (train_edges[0] == query_start)
 
-            # Get the corresponding ending nodes
-            ending_nodes = train_edges[1, matching_edges]
+                # Get the corresponding ending nodes
+                ending_nodes = train_edges[1, matching_edges]
 
-            # Calculate the frequency distribution of ending nodes
-            distribution = torch.bincount(ending_nodes, minlength=data.num_nodes)
+                # Calculate the frequency distribution of ending nodes
+                distribution = torch.bincount(ending_nodes, minlength=data.num_nodes)
 
-            # Store the distribution for this query
-            query_distributions.append(distribution)
+                # Store the distribution for this query
+                query_distributions.append(distribution)
+            else:
+                query_end = t_index[i,0]  # Starting node of the query
+                query_label = r_index[i,0]  # Edge label of the query
+
+                # Find edges that match the query end and label
+                matching_edges = (train_edges[1] == query_start) & (train_rels == query_label)
+
+                # Get the corresponding ending nodes
+                starting_nodes = train_edges[0, matching_edges]
+
+                # Calculate the frequency distribution of ending nodes
+                distribution = torch.bincount(starting_nodes, minlength=data.num_nodes)
+
+                # Store the distribution for this query
+                query_distributions.append(distribution)
 
         # Convert to tensor for better visualization
         query_distributions = torch.stack(query_distributions)
@@ -501,7 +522,7 @@ class Reccurency(nn.Module):
             query_distributions = query_distributions.to(batch.device)
         freq_res = torch.softmax(query_distributions.float(), dim=1)
 
-        return freq_res, self.alpha
+        return freq_res*self.alpha
 
 # class Reccurency(nn.Module):
 #
