@@ -22,6 +22,7 @@ class Ultra(nn.Module):
         self.window_size = rel_model_cfg['window_size']
         self.alpha = entity_model_cfg['alpha']
         self.multi_hop = entity_model_cfg['multi_hop']
+        self.rule_alpha = rule_model_cfg['alpha']
         # if self.window_size>0:
         #     feature_dim = self.entity_model.dims[0]*4
         #     self.mlp = nn.Sequential()
@@ -38,23 +39,24 @@ class Ultra(nn.Module):
         # relations are the same all positive and negative triples, so we can extract only one from the first triple among 1+nug_negs
         query_rels = batch[:, 0, 2]
         query_times = batch[:, 0, 3]
-        #score_rule, alpha = self.rule_model(data,batch)
-        if self.multi_hop == 0:
-            relation_representations = self.relation_model(data.relation_graph, query=query_rels)
-            score, output = self.entity_model(data, relation_representations, batch)
+        relation_representations = self.relation_model(data.relation_graph, query=query_rels)
+        if self.alpha == 1:
+            score = 0
         else:
-            relation_representations = self.relation_model(data.relation_graph, query=query_rels)
-            entity_graph_g, relation_graph_g = self.generate_graph_global(data, batch, self.multi_hop)
-            output = []
-            score = []
-            for i in range(len(entity_graph_g)):
-                score_t_ind, output_t_ind = self.entity_model(entity_graph_g[i],
-                                                              relation_representations[i, :].unsqueeze(0),
-                                                              batch[i, :].unsqueeze(0))
-                output.append(output_t_ind)
-                score.append(score_t_ind)
-            output = torch.stack(output).squeeze(dim=1)
-            score = torch.stack(score).squeeze(dim=1)
+            score, output = self.entity_model(data, relation_representations, batch)
+        # else:
+        #     relation_representations = self.relation_model(data.relation_graph, query=query_rels)
+        #     entity_graph_g, relation_graph_g = self.generate_graph_global(data, batch, self.multi_hop)
+        #     output = []
+        #     score = []
+        #     for i in range(len(entity_graph_g)):
+        #         score_t_ind, output_t_ind = self.entity_model(entity_graph_g[i],
+        #                                                       relation_representations[i, :].unsqueeze(0),
+        #                                                       batch[i, :].unsqueeze(0))
+        #         output.append(output_t_ind)
+        #         score.append(score_t_ind)
+        #     output = torch.stack(output).squeeze(dim=1)
+        #     score = torch.stack(score).squeeze(dim=1)
         if self.window_size > 0:
             entity_graph_t, relation_graph_t = self.generate_graph_t(data, query_times, self.window_size)
             #relation_representations_t = self.relation_model(entity_graph_t[i].relation_graph, query=query_rels)
@@ -66,12 +68,12 @@ class Ultra(nn.Module):
                 score_t.append(score_t_ind)
             output_t = torch.stack(output_t).squeeze(dim=1)
             score_t = torch.stack(score_t).squeeze(dim=1)
-            #output = torch.cat([output, output_t], dim=-1)
-            #score = self.mlp(output).squeeze(-1)
         #relation_representations_t = self.relation_model(data.relation_graph, query_rels, query_times)
         # score_rule,alpha = self.rule_model(data,batch)
-            if self.alpha!=0:
-                score = score_t*self.alpha + score * (1-self.alpha)
+            score = score_t*self.alpha + score * (1-self.alpha)
+        if self.rule_alpha != 0:
+            score_rule = self.rule_model(data, batch)
+            score = score_rule*self.rule_alpha + score * (1-self.rule_alpha)
         return score
 
     def generate_graph_t(self, data, times, window_size=3):
@@ -505,7 +507,7 @@ class Reccurency(nn.Module):
                 query_label = r_index[i,0]  # Edge label of the query
 
                 # Find edges that match the query end and label
-                matching_edges = (train_edges[1] == query_start) & (train_rels == query_label)
+                matching_edges = (train_edges[1] == query_end) & (train_rels == query_label)
 
                 # Get the corresponding ending nodes
                 starting_nodes = train_edges[0, matching_edges]
@@ -521,8 +523,8 @@ class Reccurency(nn.Module):
         if torch.cuda.is_available():
             query_distributions = query_distributions.to(batch.device)
         freq_res = torch.softmax(query_distributions.float(), dim=1)
-
-        return freq_res*self.alpha
+        #boundary.scatter_add_(1, index.unsqueeze(1), query.unsqueeze(1))
+        return freq_res
 
 # class Reccurency(nn.Module):
 #
