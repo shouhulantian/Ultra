@@ -71,7 +71,7 @@ class Ultra(nn.Module):
         #relation_representations_t = self.relation_model(data.relation_graph, query_rels, query_times)
         # score_rule,alpha = self.rule_model(data,batch)
             score = score_t*self.alpha + score * (1-self.alpha)
-        if self.rule_alpha != 0:
+        if batch.shape[1] ==data.num_nodes and self.rule_alpha != 0:
             score_rule = self.rule_model(data, batch)
             score = score_rule*self.rule_alpha + score * (1-self.rule_alpha)
         return score
