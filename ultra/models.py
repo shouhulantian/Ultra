@@ -485,7 +485,7 @@ class Reccurency(nn.Module):
 
         # Iterate through each query
         for i in range(batch.size(0)):
-            if i < batch.size(0) // 2:
+            #if i < batch.size(0) // 2:
                 query_start = h_index[i,0]  # Starting node of the query
                 query_label = r_index[i,0]  # Edge label of the query
 
@@ -502,21 +502,21 @@ class Reccurency(nn.Module):
 
                 # Store the distribution for this query
                 query_distributions.append(distribution)
-            else:
-                query_end = t_index[i,0]  # Starting node of the query
-                query_label = r_index[i,0]  # Edge label of the query
-
-                # Find edges that match the query end and label
-                matching_edges = (train_edges[1] == query_end) & (train_rels == query_label)
-
-                # Get the corresponding ending nodes
-                starting_nodes = train_edges[0, matching_edges]
-
-                # Calculate the frequency distribution of ending nodes
-                distribution = torch.bincount(starting_nodes, minlength=data.num_nodes)
-
-                # Store the distribution for this query
-                query_distributions.append(distribution)
+            # else:
+            #     query_end = t_index[i,0]  # Starting node of the query
+            #     query_label = r_index[i,0]  # Edge label of the query
+            #
+            #     # Find edges that match the query end and label
+            #     matching_edges = (train_edges[1] == query_end) & (train_rels == query_label)
+            #
+            #     # Get the corresponding ending nodes
+            #     starting_nodes = train_edges[0, matching_edges]
+            #
+            #     # Calculate the frequency distribution of ending nodes
+            #     distribution = torch.bincount(starting_nodes, minlength=data.num_nodes)
+            #
+            #     # Store the distribution for this query
+            #     query_distributions.append(distribution)
 
         # Convert to tensor for better visualization
         query_distributions = torch.stack(query_distributions)
