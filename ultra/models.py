@@ -11,7 +11,7 @@ from ultra.tasks import build_relation_graph
 
 class Ultra(nn.Module):
 
-    def __init__(self, rel_model_cfg, entity_model_cfg, rule_model_cfg=None):
+    def __init__(self, rel_model_cfg, entity_model_cfg, rule_model_cfg=None, dataset_cfg=None):
         # kept that because super Ultra sounds cool
         super(Ultra, self).__init__()
 
@@ -23,6 +23,7 @@ class Ultra(nn.Module):
         self.alpha = entity_model_cfg['alpha']
         self.multi_hop = entity_model_cfg['multi_hop']
         self.rule_alpha = rule_model_cfg['alpha']
+        self.inductive = dataset_cfg['class']
         # if self.window_size>0:
         #     feature_dim = self.entity_model.dims[0]*4
         #     self.mlp = nn.Sequential()
@@ -77,8 +78,13 @@ class Ultra(nn.Module):
         return score
 
     def generate_graph_t(self, data, times, window_size=3):
-        time_start = times - window_size
-        time_end = times + window_size
+        if 'Ind' in self.inductive:
+            time_max = max(data.time_type)
+            time_start = torch.full_like(times, time_max-2*window_size)
+            time_end = torch.full_like(times,time_max)
+        else:
+            time_start = times - window_size
+            time_end = times + window_size
 
         relation_graph_t = []
         entity_graph_t = []

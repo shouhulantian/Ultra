@@ -465,7 +465,8 @@ if __name__ == "__main__":
         model = Ultra(
             rel_model_cfg=cfg.model.relation_model,
             entity_model_cfg=cfg.model.entity_model,
-            rule_model_cfg = cfg.model.rule_model
+            rule_model_cfg = cfg.model.rule_model,
+            dataset_cfg=cfg.dataset
         )
     else:
         cfg.model.entity_model.num_relation = dataset.num_relations
