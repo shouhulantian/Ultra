@@ -81,6 +81,7 @@ def train_and_validate(cfg, model, train_data, valid_data, device, logger, filte
 
                 loss.backward()
                 for name, param in parallel_model.named_parameters():
+                    print('111')
                     if param.grad is None:
                         print(name)
                 optimizer.step()
