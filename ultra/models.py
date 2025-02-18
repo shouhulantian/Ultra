@@ -17,12 +17,12 @@ class Ultra(nn.Module):
 
         self.relation_model = RelNBFNet(**rel_model_cfg)
         self.entity_model = EntityNBFNet(**entity_model_cfg)
-        if rule_model_cfg is not None:
-            self.rule_model = Reccurency(**rule_model_cfg)
+        # if rule_model_cfg is not None:
+        #     self.rule_model = Reccurency(**rule_model_cfg)
         self.window_size = rel_model_cfg['window_size']
         self.alpha = entity_model_cfg['alpha']
-        self.multi_hop = entity_model_cfg['multi_hop']
-        self.rule_alpha = rule_model_cfg['alpha']
+        #self.multi_hop = entity_model_cfg['multi_hop']
+        #self.rule_alpha = rule_model_cfg['alpha']
         self.inductive = dataset_cfg['class']
         # if self.window_size>0:
         #     feature_dim = self.entity_model.dims[0]*4
@@ -72,9 +72,9 @@ class Ultra(nn.Module):
         #relation_representations_t = self.relation_model(data.relation_graph, query_rels, query_times)
         # score_rule,alpha = self.rule_model(data,batch)
             score = score_t*self.alpha + score * (1-self.alpha)
-        if batch.shape[1] ==data.num_nodes and self.rule_alpha != 0:
-            score_rule = self.rule_model(data, batch)
-            score = score_rule*self.rule_alpha + score * (1-self.rule_alpha)
+        # if batch.shape[1] ==data.num_nodes and self.rule_alpha != 0:
+        #     score_rule = self.rule_model(data, batch)
+        #     score = score_rule*self.rule_alpha + score * (1-self.rule_alpha)
         return score
 
     def generate_graph_t(self, data, times, window_size=3):
