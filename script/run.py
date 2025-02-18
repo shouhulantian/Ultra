@@ -80,6 +80,9 @@ def train_and_validate(cfg, model, train_data, valid_data, device, logger, filte
                 loss = loss.mean()
 
                 loss.backward()
+                for name, param in parallel_model.named_parameters():
+                    if param.grad is None:
+                        print(name)
                 optimizer.step()
                 optimizer.zero_grad()
 
@@ -465,7 +468,7 @@ if __name__ == "__main__":
         model = Ultra(
             rel_model_cfg=cfg.model.relation_model,
             entity_model_cfg=cfg.model.entity_model,
-            rule_model_cfg = cfg.model.rule_model,
+            #rule_model_cfg = cfg.model.rule_model,
             dataset_cfg=cfg.dataset
         )
     else:
