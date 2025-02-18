@@ -70,21 +70,22 @@ class GeneralizedRelationalConv(MessagePassing):
                     nn.Linear(input_dim, input_dim)
                 )
 
-        if time_dependent:
-            # obtain relation embeddings as a projection of the query relation
-            self.time_linear = nn.Linear(query_input_dim, num_time * input_dim)
-        else:
-            if not self.project_times:
-                # relation embeddings as an independent embedding matrix per each layer
-                self.time = nn.Embedding(num_time, input_dim)
+        if self.message_func in ['ttranse','tcomplx','tntcomplx']:
+            if time_dependent:
+                # obtain relation embeddings as a projection of the query relation
+                self.time_linear = nn.Linear(query_input_dim, num_time * input_dim)
             else:
-                # will be initialized after the pass over relation graph
-                self.time = None
-                self.time_projection = nn.Sequential(
-                    nn.Linear(input_dim, input_dim),
-                    nn.ReLU(),
-                    nn.Linear(input_dim, input_dim)
-                )
+                if not self.project_times:
+                    # relation embeddings as an independent embedding matrix per each layer
+                    self.time = nn.Embedding(num_time, input_dim)
+                else:
+                    # will be initialized after the pass over relation graph
+                    self.time = None
+                    self.time_projection = nn.Sequential(
+                        nn.Linear(input_dim, input_dim),
+                        nn.ReLU(),
+                        nn.Linear(input_dim, input_dim)
+                    )
 
 
     def forward(self, input, query, boundary, edge_index, edge_type, size, edge_weight=None, time_type=None):
