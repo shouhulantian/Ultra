@@ -203,6 +203,7 @@ class GeneralizedRelationalConv(MessagePassing):
             message_re = x_j_re*r_j_re*t_j_re - x_j_im*r_j_im*t_j_re - x_j_im*r_j_re*t_j_im - x_j_re * r_j_im*t_j_im
             message_im = x_j_im*r_j_re*t_j_re + x_j_re*r_j_im*t_j_re + x_j_re*r_j_re*t_j_im - x_j_im*r_j_im*t_j_im
             message = torch.cat([message_re, message_im], dim=-1)
+            print(input_j)
         elif self.message_func == 'tntcomplx':
             x_j_re, x_j_im = input_j.chunk(2, dim=-1)
             r_j_re, r_j_im = relation_j.chunk(2, dim=-1)

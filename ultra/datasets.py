@@ -724,6 +724,15 @@ class smallpedia(TransductiveTemporalDataset):
     name = "smallpedia"
     delimiter = "\t"
 
+class Testkg(TransductiveTemporalDataset):
+    urls = [
+        "https://raw.githubusercontent.com/shouhulantian/Ultra/refs/heads/main/datasets/test_kg/train.txt",
+        "https://raw.githubusercontent.com/shouhulantian/Ultra/refs/heads/main/datasets/test_kg/valid.txt",
+        "https://raw.githubusercontent.com/shouhulantian/Ultra/refs/heads/main/datasets/test_kg/test.txt",
+    ]
+    name = "Testkg"
+    delimiter = "\t"
+
 class ICEWS14Ind(TransductiveTemporalDataset):
     urls = [
         "https://raw.githubusercontent.com/nec-research/recurrency_baseline_tkg/master/data/ICEWS14/train.txt",
@@ -1353,6 +1362,7 @@ class JointDataset(InMemoryDataset):
         'ICEWS14': ICEWS14,
         'GDELT':GDELT,
         'ICEWS0515':ICEWS0515,
+        'Testkg': Testkg
     }
 
     def __init__(self, root, graphs, transform=None, pre_transform=None):
