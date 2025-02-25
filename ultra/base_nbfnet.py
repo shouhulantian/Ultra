@@ -76,7 +76,10 @@ class BaseNBFNet(nn.Module):
             data = copy.copy(data)
             data.edge_index = data.edge_index[:, mask]
             data.edge_type = data.edge_type[mask]
-            data.time_type = data.time_type[mask]
+            if isinstance(data.time_type, list):
+                data.time_type = [triple for i, triple in enumerate(data.time_type) if mask[i]]
+            else:
+                data.time_type = data.time_type[mask]
         else:
             h_index_ext = torch.cat([h_index, t_index], dim=-1)
             t_index_ext = torch.cat([t_index, h_index], dim=-1)

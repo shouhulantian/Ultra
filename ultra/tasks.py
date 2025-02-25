@@ -50,10 +50,11 @@ def negative_sampling(data, batch, num_negative, strict=True):
 
     # strict negative sampling vs random negative sampling
     if strict:
-        if batch.shape[1] == 3:
-            t_mask, h_mask = strict_negative_mask(data, batch)
-        else:
-            t_mask, h_mask = strict_negative_time_mask(data, batch)
+        # if batch.shape[1] == 3:
+        #     t_mask, h_mask = strict_negative_mask(data, batch)
+        # else:
+        #     t_mask, h_mask = strict_negative_mask(data, batch)
+        #     t_mask_time, h_mask_time = strict_negative_time_mask(data, batch)
         t_mask, h_mask = strict_negative_mask(data, batch)
         t_mask = t_mask[:batch_size // 2]
         neg_t_candidate = t_mask.nonzero()[:, 1]
@@ -158,15 +159,21 @@ def strict_negative_mask(data, batch):
 
     return t_mask, h_mask
 
-def strict_negative_time_mask(data, batch):
+def strict_negative_time_mask(data, batch, train_data=None):
     # this function makes sure that for a given (h, r) batch we will NOT sample true tails as random negatives
     # similarly, for a given (t, r) we will NOT sample existing true heads as random negatives
-
+    if train_data is None:
+        train_data = data
     pos_h_index, pos_t_index, pos_r_index, pos_time_index = batch.t()
 
     # part I: sample hard negative tails
     # edge index of all (head, relation) edges from the underlying graph
-    edge_index = torch.stack([data.edge_index[0], data.edge_type,data.time_type])
+    train_edges = torch.cat([train_data.target_edge_index, train_data.target_edge_index.flip(0)], dim=1)
+    train_etypes = torch.cat([train_data.target_edge_type, train_data.target_edge_type + int(train_data.num_relations)])
+    train_ttypes = torch.cat([train_data.target_time_type,train_data.target_time_type ])
+    edge_index = torch.stack([train_edges[0], train_etypes, train_ttypes])
+    ##previous one without Compact Dataset
+    #edge_index = torch.stack([data.edge_index[0], data.edge_type,data.time_type])
     # edge index of current batch (head, relation) for which we will sample negatives
     query_index = torch.stack([pos_h_index, pos_r_index,pos_time_index])
     # search for all true tails for the given (h, r) batch
@@ -181,7 +188,9 @@ def strict_negative_time_mask(data, batch):
 
     # part II: sample hard negative heads
     # edge_index[1] denotes tails, so the edge index becomes (t, r)
-    edge_index = torch.stack([data.edge_index[1], data.edge_type,data.time_type])
+    edge_index = torch.stack([train_edges[1], train_etypes, train_ttypes])
+    ##previous one without Compact Dataset
+    #edge_index = torch.stack([data.edge_index[1], data.edge_type,data.time_type])
     # edge index of current batch (tail, relation) for which we will sample heads
     query_index = torch.stack([pos_t_index, pos_r_index,pos_time_index])
     # search for all true heads for the given (t, r) batch

@@ -171,7 +171,10 @@ class GeneralizedRelationalConv(MessagePassing):
         relation_j = relation.index_select(self.node_dim, edge_type)
 
         if time is not None:
-            time_j = time.index_select(self.node_dim, time_type)
+            if isinstance(time_type, list):
+                pass
+            else:
+                time_j = time.index_select(self.node_dim, time_type)
         if self.message_func == "transe":
             message = input_j + relation_j
         elif self.message_func == "distmult":

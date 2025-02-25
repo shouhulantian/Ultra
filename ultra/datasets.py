@@ -508,6 +508,182 @@ class TransductiveTemporalDataset(InMemoryDataset):
     def processed_file_names(self):
         return "data.pt"
 
+class TransductiveTemporalCompactDataset(InMemoryDataset):
+    delimiter = None
+
+    def __init__(self, root, transform=None, pre_transform=build_relation_graph, **kwargs):
+
+        super().__init__(root, transform, pre_transform)
+        self.data, self.slices = torch.load(self.processed_paths[0])
+
+    @property
+    def raw_file_names(self):
+        return ["train.txt", "valid.txt", "test.txt"]
+
+    def download(self):
+        for url, path in zip(self.urls, self.raw_paths):
+            download_path = download_url(url, self.raw_dir)
+            os.rename(download_path, path)
+
+    def load_file(self, quadruple_file, inv_entity_vocab={}, inv_rel_vocab={},inv_time_vocab={}):
+
+        quadruples = []
+        entity_cnt, rel_cnt, time_cnt = len(inv_entity_vocab), len(inv_rel_vocab), len(inv_time_vocab)
+
+        with open(quadruple_file, "r", encoding="utf-8") as fin:
+            for l in fin:
+                t_instance = l.split() if self.delimiter is None else l.strip().split(self.delimiter)
+                #print(t_instance)
+                if t_instance[0] not in inv_entity_vocab:
+                    inv_entity_vocab[t_instance[0]] = entity_cnt
+                    entity_cnt += 1
+                if t_instance[2] not in inv_entity_vocab:
+                    inv_entity_vocab[t_instance[2]] = entity_cnt
+                    entity_cnt += 1
+                if t_instance[1] not in inv_rel_vocab:
+                    inv_rel_vocab[t_instance[1]] = rel_cnt
+                    rel_cnt += 1
+                if t_instance[3] not in inv_time_vocab:
+                    inv_time_vocab[t_instance[3]] = time_cnt
+                    time_cnt += 1
+                if len(t_instance) == 5 and t_instance[4] not in inv_time_vocab:
+                    inv_time_vocab[t_instance[4]] = time_cnt
+                    time_cnt += 1
+                if len(t_instance) == 4:
+                    u, r, v, t1 = inv_entity_vocab[t_instance[0]], inv_rel_vocab[t_instance[1]], inv_entity_vocab[t_instance[2]], inv_time_vocab[t_instance[3]]
+                    quadruples.append((u, v, r, t1))
+                else:
+                    u, r, v, t1, t2 = inv_entity_vocab[t_instance[0]], inv_rel_vocab[t_instance[1]],inv_entity_vocab[t_instance[2]], inv_time_vocab[t_instance[3]], inv_time_vocab[t_instance[4]]
+                    quadruples.append((u, v, r, t1, t2))
+
+        return {
+            "quadruples": quadruples,
+            "num_node": len(inv_entity_vocab),  # entity_cnt,
+            "num_relation": len(inv_rel_vocab),
+            "num_time": len(inv_time_vocab),
+            "inv_entity_vocab": inv_entity_vocab,
+            "inv_rel_vocab": inv_rel_vocab,
+            "inv_time_vocab": inv_time_vocab
+        }
+
+    # default loading procedure: process train/valid/test files, create graphs from them
+    def process(self):
+
+        train_files = self.raw_paths[:3]
+
+        train_results = self.load_file(train_files[0], inv_entity_vocab={}, inv_rel_vocab={}, inv_time_vocab={})
+        valid_results = self.load_file(train_files[1],
+                                       train_results["inv_entity_vocab"], train_results["inv_rel_vocab"], train_results['inv_time_vocab'])
+        test_results = self.load_file(train_files[2],
+                                      valid_results["inv_entity_vocab"], valid_results["inv_rel_vocab"],valid_results['inv_time_vocab'])
+
+        # in some datasets, there are several new nodes in the test set, eg 123,143 YAGO train adn 123,182 in YAGO test
+        # for consistency with other experimental results, we'll include those in the full vocab and num nodes
+        num_node = test_results["num_node"]
+        # the same for rels: in most cases train == test for transductive
+        # for AristoV4 train rels 1593, test 1604
+        num_relations = test_results["num_relation"]
+        num_time = test_results['num_time']
+        #self.num_relations_real = num_relations
+
+        train_quadruples = train_results["quadruples"]
+        valid_quadruples = valid_results["quadruples"]
+        test_quadruples = test_results["quadruples"]
+
+        compact_triples, compact_timestamps = self.provide_compact_quadruples(train_quadruples,num_time)
+
+        compact_edges = torch.tensor([[t[0], t[1]] for t in compact_triples], dtype=torch.long).t()
+        compact_etypes = torch.tensor([t[2] for t in compact_triples])
+
+        train_target_edges = torch.tensor([[t[0], t[1]] for t in train_quadruples], dtype=torch.long).t()
+        train_target_etypes = torch.tensor([t[2] for t in train_quadruples])
+
+        valid_edges = torch.tensor([[t[0], t[1]] for t in valid_quadruples], dtype=torch.long).t()
+        valid_etypes = torch.tensor([t[2] for t in valid_quadruples])
+
+        test_edges = torch.tensor([[t[0], t[1]] for t in test_quadruples], dtype=torch.long).t()
+        test_etypes = torch.tensor([t[2] for t in test_quadruples])
+
+        train_target_ttypes = torch.tensor([t[3] for t in train_quadruples])
+        valid_target_ttypes = torch.tensor([t[3] for t in valid_quadruples])
+        test_target_ttypes = torch.tensor([t[3] for t in test_quadruples])
+
+        # if len(train_quadruples[0]) == 4:
+        #     train_target_ttypes = torch.tensor([t[3] for t in train_quadruples])
+        #     valid_target_ttypes = torch.tensor([t[3] for t in valid_quadruples])
+        #     test_target_ttypes = torch.tensor([t[3] for t in test_quadruples])
+        # else:
+        #     train_target_ttypes = torch.tensor([(t[3],t[4]) for t in train_quadruples])
+        #     valid_target_ttypes = torch.tensor([(t[3],t[4]) for t in valid_quadruples])
+        #     test_target_ttypes = torch.tensor([(t[3],t[4]) for t in test_quadruples])
+
+        # train_edges = torch.cat([train_target_edges, train_target_edges.flip(0)], dim=1)
+        # train_etypes = torch.cat([train_target_etypes, train_target_etypes + num_relations])
+        # train_ttypes = torch.cat([train_target_ttypes, train_target_ttypes])
+
+        train_edges = torch.cat([compact_edges, compact_edges.flip(0)], dim=1)
+        train_etypes = torch.cat([compact_etypes, compact_etypes + num_relations])
+        train_ttypes = compact_timestamps + compact_timestamps
+
+        train_data = Data(edge_index=train_edges, edge_type=train_etypes, num_nodes=num_node,
+                          target_edge_index=train_target_edges, target_edge_type=train_target_etypes,
+                          num_relations=num_relations * 2, num_time=num_time, time_type=train_ttypes, target_time_type=train_target_ttypes)
+        valid_data = Data(edge_index=train_edges, edge_type=train_etypes, num_nodes=num_node,
+                          target_edge_index=valid_edges, target_edge_type=valid_etypes, num_relations=num_relations * 2,num_time=num_time,time_type=train_ttypes, target_time_type=valid_target_ttypes)
+        test_data = Data(edge_index=train_edges, edge_type=train_etypes, num_nodes=num_node,
+                         target_edge_index=test_edges, target_edge_type=test_etypes, num_relations=num_relations * 2,num_time=num_time,time_type=train_ttypes, target_time_type=test_target_ttypes)
+
+        # build graphs of relations
+        if self.pre_transform is not None:
+            train_data = self.pre_transform(train_data)
+            valid_data = self.pre_transform(valid_data)
+            test_data = self.pre_transform(test_data)
+
+        torch.save((self.collate([train_data, valid_data, test_data])), self.processed_paths[0])
+
+    def provide_vocab(self):
+
+        train_files = self.raw_paths[:3]
+
+        train_results = self.load_file(train_files[0], inv_entity_vocab={}, inv_rel_vocab={}, inv_time_vocab={})
+        valid_results = self.load_file(train_files[1],
+                                       train_results["inv_entity_vocab"], train_results["inv_rel_vocab"], train_results['inv_time_vocab'])
+        test_results = self.load_file(train_files[2],
+                                      valid_results["inv_entity_vocab"], valid_results["inv_rel_vocab"],valid_results['inv_time_vocab'])
+
+        return test_results["inv_entity_vocab"], test_results["inv_rel_vocab"], test_results["inv_time_vocab"]
+
+    def provide_compact_quadruples(self, quads, num_time):
+        triples_dict = {}
+        for t in quads:
+            if (t[0], t[1], t[2]) not in triples_dict:
+                triples_dict[(t[0], t[1], t[2])] = [t[3]]
+            else:
+                triples_dict[(t[0], t[1], t[2])].append(t[3])
+        compact_triples = list(triples_dict.keys())
+        compact_timestamps = list(triples_dict.values())
+
+        return compact_triples, compact_timestamps
+
+    def __repr__(self):
+        return "%s()" % (self.name)
+
+    @property
+    def num_relations(self):
+        return int(self.data.edge_type.max()) + 1
+
+    @property
+    def raw_dir(self):
+        return os.path.join(self.root, self.name, "raw")
+
+    @property
+    def processed_dir(self):
+        return os.path.join(self.root, self.name, "processed")
+
+    @property
+    def processed_file_names(self):
+        return "data.pt"
+
 class CoDEx(TransductiveDataset):
 
     name = "codex"
@@ -635,7 +811,7 @@ class ConceptNet100k(TransductiveDataset):
     name = "cnet100k"
     delimiter = "\t"
 
-class ICEWS14(TransductiveTemporalDataset):
+class ICEWS14(TransductiveTemporalCompactDataset):
 
     urls = [
         "https://raw.githubusercontent.com/soledad921/ATISE/master/icews14/train.txt",
@@ -696,7 +872,7 @@ class ICEWS14_temporal_inv(TransductiveTemporalDataset):
     name = "ICEWS14_temporal_inv"
     delimiter = ","
 
-class ICEWS0515(TransductiveTemporalDataset):
+class ICEWS0515(TransductiveTemporalCompactDataset):
 
     urls = [
         "https://raw.githubusercontent.com/soledad921/ATISE/master/icews05-15/train.txt",
@@ -706,13 +882,13 @@ class ICEWS0515(TransductiveTemporalDataset):
     name = "ICEWS0515"
     delimiter = "\t"
 
-class GDELT(TransductiveTemporalDataset):
+class GDELT(TransductiveTemporalCompactDataset):
     urls = [
         "https://raw.githubusercontent.com/zhangfw123/TLT-KGE/refs/heads/main/tkbc/src_data/gdelt/train",
         "https://raw.githubusercontent.com/zhangfw123/TLT-KGE/refs/heads/main/tkbc/src_data/gdelt/valid",
         "https://raw.githubusercontent.com/zhangfw123/TLT-KGE/refs/heads/main/tkbc/src_data/gdelt/test",
     ]
-    name = "ICEWS0515"
+    name = "GDELT"
     delimiter = "\t"
 
 class smallpedia(TransductiveTemporalDataset):
