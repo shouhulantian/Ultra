@@ -358,6 +358,7 @@ class EntityNBFNet(BaseNBFNet):
                 edge_weight = edge_weight.clone().requires_grad_()
 
             # Bellman-Ford iteration, we send the original boundary condition in addition to the updated node states
+            print(data.time_type.device)
             hidden = layer(layer_input, query, boundary, data.edge_index, data.edge_type, size, edge_weight=edge_weight, time_type=data.time_type)
             if self.short_cut and hidden.shape == layer_input.shape:
                 # residual connection here
