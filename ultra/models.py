@@ -89,10 +89,28 @@ class Ultra(nn.Module):
         relation_graph_t = []
         entity_graph_t = []
         for i in range(times.shape[0]):
-            index = torch.ge(data.time_type, time_start[i]) & torch.le(data.time_type, time_end[i])
-            edge_subset = data.edge_index[:,index]
-            edge_type_subset=data.edge_type[index]
-            time_type_subset = data.time_type[index]
+            if isinstance(data.time_type, list):
+                edge_subset = []
+                edge_type_subset = []
+                time_type_subset = []
+
+                start = time_start[i].item()
+                end = time_end[i].item()
+                for j in range(len(data.time_type)):
+                    filtered_list = [t for t in data.time_type[j] if start <= t <= end]
+
+                    if filtered_list:  # Only keep non-empty filtered lists and corresponding edges
+                        time_type_subset.append(filtered_list)
+                        edge_subset.append(data.edge_index[:,j])
+                        edge_type_subset.append(data.edge_type[j])
+                edge_subset = torch.stack(edge_subset, dim=1)
+                edge_type_subset = torch.stack(edge_type_subset, dim=0)
+            else:
+                index = torch.ge(data.time_type, time_start[i]) & torch.le(data.time_type, time_end[i])
+                edge_subset = data.edge_index[:,index]
+                edge_type_subset=data.edge_type[index]
+                time_type_subset = data.time_type[index]
+
             graph_t = torch_geometric.data.Data(edge_index=edge_subset, edge_type= edge_type_subset,
                                                                                     num_nodes=data.num_nodes,
                                                                                     num_relations=data.num_relations,time_type=time_type_subset,

@@ -170,11 +170,6 @@ class GeneralizedRelationalConv(MessagePassing):
     def message(self, input_j, relation, boundary, edge_type, time=None, time_type=None):
         relation_j = relation.index_select(self.node_dim, edge_type)
 
-        if time is not None:
-            if isinstance(time_type, list):
-                pass
-            else:
-                time_j = time.index_select(self.node_dim, time_type)
         if self.message_func == "transe":
             message = input_j + relation_j
         elif self.message_func == "distmult":
@@ -198,16 +193,29 @@ class GeneralizedRelationalConv(MessagePassing):
             message_im = x_j_re * r_j_im + x_j_im * r_j_re
             message = torch.cat([message_re, message_im], dim=-1)
         elif self.message_func == 'ttranse':
+            if isinstance(time_type, list):
+                time_j = torch.stack(
+                    [torch.sum(time.index_select(self.node_dim, torch.tensor(i)), dim=1)*len(i) for i in time_type], dim=1)
+            else:
+                time_j = time.index_select(self.node_dim, time_type)
             message = input_j + relation_j + time_j
         elif self.message_func == 'tcomplx':
+            if isinstance(time_type, list):
+                time_j = torch.stack([torch.sum(time.index_select(self.node_dim, torch.tensor(i)),dim=1) for i in time_type], dim=1)
+            else:
+                time_j = time.index_select(self.node_dim, time_type)
             x_j_re, x_j_im = input_j.chunk(2, dim=-1)
             r_j_re, r_j_im = relation_j.chunk(2, dim=-1)
             t_j_re, t_j_im = time_j.chunk(2, dim=-1)
             message_re = x_j_re*r_j_re*t_j_re - x_j_im*r_j_im*t_j_re - x_j_im*r_j_re*t_j_im - x_j_re * r_j_im*t_j_im
             message_im = x_j_im*r_j_re*t_j_re + x_j_re*r_j_im*t_j_re + x_j_re*r_j_re*t_j_im - x_j_im*r_j_im*t_j_im
             message = torch.cat([message_re, message_im], dim=-1)
-            print(input_j)
         elif self.message_func == 'tntcomplx':
+            if isinstance(time_type, list):
+                time_j = torch.stack(
+                    [torch.sum(time.index_select(self.node_dim, torch.tensor(i)), dim=1) for i in time_type], dim=1)
+            else:
+                time_j = time.index_select(self.node_dim, time_type)
             x_j_re, x_j_im = input_j.chunk(2, dim=-1)
             r_j_re, r_j_im = relation_j.chunk(2, dim=-1)
             t_j_re, t_j_im = time_j.chunk(2, dim=-1)

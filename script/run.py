@@ -244,9 +244,9 @@ def test(cfg, model, test_data, device, logger, filtered_data=None, return_metri
         h_pred = model(test_data, h_batch)
 
         if filtered_data is None:
-            t_mask, h_mask = tasks.strict_negative_mask(test_data, batch, train_data)
+            t_mask, h_mask = tasks.strict_negative_mask(test_data, batch)
         else:
-            t_mask, h_mask = tasks.strict_negative_mask(filtered_data, batch, train_data)
+            t_mask, h_mask = tasks.strict_negative_mask(filtered_data, batch)
         pos_h_index, pos_t_index, pos_r_index = batch.t()
         t_ranking = tasks.compute_ranking(t_pred, pos_t_index, t_mask)
         h_ranking = tasks.compute_ranking(h_pred, pos_h_index, h_mask)
@@ -352,9 +352,9 @@ def test_time(cfg, model, test_data, device, logger, filtered_data=None, return_
         h_pred = model(test_data, h_batch)
 
         if filtered_data is None:
-            t_mask, h_mask = tasks.strict_negative_time_mask(test_data, batch)
+            t_mask, h_mask = tasks.strict_negative_time_mask(test_data, batch, train_data)
         else:
-            t_mask, h_mask = tasks.strict_negative_time_mask(filtered_data, batch)
+            t_mask, h_mask = tasks.strict_negative_time_mask(filtered_data, batch, train_data)
         pos_h_index, pos_t_index, pos_r_index, pos_time_index = batch.t()
         t_ranking = tasks.compute_ranking(t_pred, pos_t_index, t_mask)
         h_ranking = tasks.compute_ranking(h_pred, pos_h_index, h_mask)
