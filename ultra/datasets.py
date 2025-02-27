@@ -811,7 +811,7 @@ class ConceptNet100k(TransductiveDataset):
     name = "cnet100k"
     delimiter = "\t"
 
-class ICEWS14(TransductiveTemporalCompactDataset):
+class ICEWS14(TransductiveTemporalDataset):
 
     urls = [
         "https://raw.githubusercontent.com/soledad921/ATISE/master/icews14/train.txt",
@@ -819,6 +819,16 @@ class ICEWS14(TransductiveTemporalCompactDataset):
         "https://raw.githubusercontent.com/soledad921/ATISE/master/icews14/test.txt",
         ]
     name = "ICEWS14"
+    delimiter = "\t"
+
+class ICEWS14Compact(TransductiveTemporalCompactDataset):
+
+    urls = [
+        "https://raw.githubusercontent.com/soledad921/ATISE/master/icews14/train.txt",
+        "https://raw.githubusercontent.com/soledad921/ATISE/master/icews14/valid.txt",
+        "https://raw.githubusercontent.com/soledad921/ATISE/master/icews14/test.txt",
+        ]
+    name = "ICEWS14Compact"
     delimiter = "\t"
 
 class ICEWS14RR(TransductiveTemporalDataset):
@@ -1538,7 +1548,8 @@ class JointDataset(InMemoryDataset):
         'ICEWS14': ICEWS14,
         'GDELT':GDELT,
         'ICEWS0515':ICEWS0515,
-        'Testkg': Testkg
+        'Testkg': Testkg,
+        'ICEWS14Compact': ICEWS14Compact
     }
 
     def __init__(self, root, graphs, transform=None, pre_transform=None):
