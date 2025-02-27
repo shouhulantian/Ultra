@@ -334,7 +334,7 @@ def test(cfg, model, test_data, device, logger, filtered_data=None, return_metri
 
 
 @torch.no_grad()
-def test_time(cfg, model, test_data, device, logger, filtered_data=None, return_metrics=False):
+def test_time(cfg, model, test_data, device, logger, filtered_data=None, return_metrics=False,train_data=None):
     world_size = util.get_world_size()
     rank = util.get_rank()
 
@@ -525,7 +525,7 @@ if __name__ == "__main__":
         logger.warning(separator)
         logger.warning("Evaluate on test")
     if 'time_type' in dataset._data.keys():
-        test_time(cfg, model, test_data, filtered_data=test_filtered_data, device=device, logger=logger)
+        test_time(cfg, model, test_data, filtered_data=test_filtered_data, device=device, logger=logger,train_data=train_data)
         #test(cfg, model, test_data, filtered_data=test_filtered_data, device=device, logger=logger)
     else:
         test(cfg, model, test_data, filtered_data=test_filtered_data, device=device, logger=logger)
@@ -533,7 +533,7 @@ if __name__ == "__main__":
         logger.warning(separator)
         logger.warning("Evaluate on valid")
     if 'time_type' in dataset._data.keys():
-        test_time(cfg, model, valid_data, filtered_data=val_filtered_data, device=device, logger=logger)
+        test_time(cfg, model, valid_data, filtered_data=val_filtered_data, device=device, logger=logger, train_data=train_data)
     else:
         test(cfg, model, valid_data, filtered_data=val_filtered_data, device=device, logger=logger)
     #test(cfg, model, test_data, filtered_data=test_filtered_data, device=device, logger=logger)
