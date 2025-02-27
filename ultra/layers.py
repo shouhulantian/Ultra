@@ -195,13 +195,13 @@ class GeneralizedRelationalConv(MessagePassing):
         elif self.message_func == 'ttranse':
             if isinstance(time_type, list):
                 time_j = torch.stack(
-                    [torch.sum(time.index_select(self.node_dim, torch.tensor(i)), dim=1)*len(i) for i in time_type], dim=1)
+                    [torch.sum(time.index_select(self.node_dim, torch.tensor(i,device=time.device)), dim=1)*len(i) for i in time_type], dim=1)
             else:
                 time_j = time.index_select(self.node_dim, time_type)
             message = input_j + relation_j + time_j
         elif self.message_func == 'tcomplx':
             if isinstance(time_type, list):
-                time_j = torch.stack([torch.sum(time.index_select(self.node_dim, torch.tensor(i)),dim=1) for i in time_type], dim=1)
+                time_j = torch.stack([torch.sum(time.index_select(self.node_dim, torch.tensor(i,device=time.device)),dim=1) for i in time_type], dim=1)
             else:
                 time_j = time.index_select(self.node_dim, time_type)
             x_j_re, x_j_im = input_j.chunk(2, dim=-1)
@@ -213,7 +213,7 @@ class GeneralizedRelationalConv(MessagePassing):
         elif self.message_func == 'tntcomplx':
             if isinstance(time_type, list):
                 time_j = torch.stack(
-                    [torch.sum(time.index_select(self.node_dim, torch.tensor(i)), dim=1) for i in time_type], dim=1)
+                    [torch.sum(time.index_select(self.node_dim, torch.tensor(i,device=time.device)), dim=1) for i in time_type], dim=1)
             else:
                 time_j = time.index_select(self.node_dim, time_type)
             x_j_re, x_j_im = input_j.chunk(2, dim=-1)
