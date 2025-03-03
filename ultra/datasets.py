@@ -882,7 +882,7 @@ class ICEWS14_temporal_inv(TransductiveTemporalDataset):
     name = "ICEWS14_temporal_inv"
     delimiter = ","
 
-class ICEWS0515(TransductiveTemporalCompactDataset):
+class ICEWS0515(TransductiveTemporalDataset):
 
     urls = [
         "https://raw.githubusercontent.com/soledad921/ATISE/master/icews05-15/train.txt",
@@ -890,6 +890,16 @@ class ICEWS0515(TransductiveTemporalCompactDataset):
         "https://raw.githubusercontent.com/soledad921/ATISE/master/icews05-15/test.txt",
         ]
     name = "ICEWS0515"
+    delimiter = "\t"
+
+class ICEWS0515Compact(TransductiveTemporalCompactDataset):
+
+    urls = [
+        "https://raw.githubusercontent.com/soledad921/ATISE/master/icews05-15/train.txt",
+        "https://raw.githubusercontent.com/soledad921/ATISE/master/icews05-15/valid.txt",
+        "https://raw.githubusercontent.com/soledad921/ATISE/master/icews05-15/test.txt",
+        ]
+    name = "ICEWS0515Compact"
     delimiter = "\t"
 
 class GDELT(TransductiveTemporalCompactDataset):
@@ -1549,7 +1559,8 @@ class JointDataset(InMemoryDataset):
         'GDELT':GDELT,
         'ICEWS0515':ICEWS0515,
         'Testkg': Testkg,
-        'ICEWS14Compact': ICEWS14Compact
+        'ICEWS14Compact': ICEWS14Compact,
+        'ICEWS0515Compact':ICEWS0515Compact
     }
 
     def __init__(self, root, graphs, transform=None, pre_transform=None):
