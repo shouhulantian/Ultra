@@ -902,7 +902,7 @@ class ICEWS0515Compact(TransductiveTemporalCompactDataset):
     name = "ICEWS0515Compact"
     delimiter = "\t"
 
-class GDELT(TransductiveTemporalCompactDataset):
+class GDELT(TransductiveTemporalDataset):
     urls = [
         "https://raw.githubusercontent.com/zhangfw123/TLT-KGE/refs/heads/main/tkbc/src_data/gdelt/train",
         "https://raw.githubusercontent.com/zhangfw123/TLT-KGE/refs/heads/main/tkbc/src_data/gdelt/valid",
