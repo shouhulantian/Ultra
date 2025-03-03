@@ -17,7 +17,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from ultra import tasks, util
 from ultra.models import Ultra
 from ultra.base_nbfnet import BaseNBFNet
-
+import os
 
 separator = ">" * 30
 line = "-" * 30
@@ -165,6 +165,7 @@ def train_and_validate_time(cfg, model, train_data, valid_data, device, logger, 
                 batch = tasks.negative_sampling(train_data, batch, cfg.task.num_negative,
                                                 strict=cfg.task.strict_negative)
                 pred = parallel_model(train_data, batch)
+                os.system('nvidia-smi')
                 target = torch.zeros_like(pred)
                 target[:, 0] = 1
                 loss = F.binary_cross_entropy_with_logits(pred, target, reduction="none")
