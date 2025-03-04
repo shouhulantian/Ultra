@@ -8,29 +8,37 @@ model:
   class: Ultra
   relation_model:
     class: NBFNet
-    input_dim: 64
-    hidden_dims: [64, 64, 64, 64, 64, 64]
+    input_dim: 32
+    hidden_dims: [32, 32, 32, 32, 32, 32]
     message_func: dual
     aggregate_func: sum
     short_cut: yes
     layer_norm: yes
+    time_graph: default
+    window_size: 1
   entity_model:
     class: IndNBFNet
-    input_dim: 64
-    hidden_dims: [64, 64, 64, 64, 64, 64]
-    message_func: dual
+    input_dim: 32
+    hidden_dims: [32, 32, 32, 32, 32, 32]
+    message_func: tcomplx
     aggregate_func: sum
     short_cut: yes
     layer_norm: yes
-    use_time: True
+    use_time: nbf
+    remove_edge: default
+    boundary: time
+    project_times: True
+    time_dependent: False
+    alpha: 0.8
+    multi_hop: 3
   rule_model:
     class: Recurrency
-    score_path: /Users/pjx/Documents/git/recurrency_baseline_tkg/results/baselinepsibaselinexi/baselinepsibaselinexi_ICEWS14_0.0_singlestep_0_-1_-1.pkl
-    alpha: 0.5
+    #score_path: /Users/pjx/Documents/git/recurrency_baseline_tkg/results/baselinepsibaselinexi/baselinepsibaselinexi_ICEWS14_0.0_singlestep_0_-1_-1.pkl
+    alpha: 0
 
 task:
   name: TransductiveInference
-  num_negative: 512
+  num_negative: 128
   strict_negative: yes
   adversarial_temperature: 1
   metric: [mr, mrr, hits@1, hits@3, hits@10]
@@ -41,7 +49,7 @@ optimizer:
 
 train:
   gpus: {{ gpus }}
-  batch_size: 32
+  batch_size: 2
   num_epoch: {{ epochs }}
   log_interval: 100
   batch_per_epoch: {{ bpe }}
