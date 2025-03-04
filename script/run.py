@@ -133,7 +133,7 @@ def train_and_validate_time(cfg, model, train_data, valid_data, device, logger, 
     rank = util.get_rank()
 
     train_quadruples = torch.cat([train_data.target_edge_index, train_data.target_edge_type.unsqueeze(0), train_data.target_time_type.unsqueeze(0)]).t()
-    if cfg.dataset['class'] == 'ICEWS14':
+    if cfg.dataset['class'] == 'GDELT':
         train_quadruples = sample_quadruples(train_quadruples)
     sampler = torch_data.DistributedSampler(train_quadruples, world_size, rank)
     train_loader = torch_data.DataLoader(train_quadruples, cfg.train.batch_size, sampler=sampler)
