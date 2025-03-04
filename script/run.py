@@ -120,7 +120,7 @@ def train_and_validate(cfg, model, train_data, valid_data, device, logger, filte
     model.load_state_dict(state["model"])
     util.synchronize()
 
-def sample_quadruples(quadruples, sample_ratio=0.1):
+def sample_quadruples(quadruples, sample_ratio=0.05):
     num_samples = int(quadruples.shape[0] * sample_ratio)  # Compute 30% of the quadruples
     indices = torch.randperm(quadruples.shape[0])[:num_samples]  # Randomly shuffle and select indices
     return quadruples[indices]  # Select the sampled quadruples
