@@ -120,6 +120,10 @@ def train_and_validate(cfg, model, train_data, valid_data, device, logger, filte
     model.load_state_dict(state["model"])
     util.synchronize()
 
+def sample_quadruples(quadruples, sample_ratio=0.1):
+    num_samples = int(quadruples.shape[0] * sample_ratio)  # Compute 30% of the quadruples
+    indices = torch.randperm(quadruples.shape[0])[:num_samples]  # Randomly shuffle and select indices
+    return quadruples[indices]  # Select the sampled quadruples
 
 def train_and_validate_time(cfg, model, train_data, valid_data, device, logger, filtered_data=None, batch_per_epoch=None):
     if cfg.train.num_epoch == 0:
@@ -129,6 +133,8 @@ def train_and_validate_time(cfg, model, train_data, valid_data, device, logger, 
     rank = util.get_rank()
 
     train_quadruples = torch.cat([train_data.target_edge_index, train_data.target_edge_type.unsqueeze(0), train_data.target_time_type.unsqueeze(0)]).t()
+    if cfg.dataset['class'] == 'ICEWS14':
+        train_quadruples = sample_quadruples(train_quadruples)
     sampler = torch_data.DistributedSampler(train_quadruples, world_size, rank)
     train_loader = torch_data.DataLoader(train_quadruples, cfg.train.batch_size, sampler=sampler)
 
