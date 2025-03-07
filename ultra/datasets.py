@@ -591,6 +591,7 @@ class TransductiveTemporalCompactDataset(InMemoryDataset):
         test_quadruples = test_results["quadruples"]
 
         compact_triples, compact_timestamps = self.provide_compact_quadruples(train_quadruples,num_time)
+        compact_timestamps = torch.nn.utils.rnn.pad_sequence(compact_timestamps, batch_first=True, padding_value=-1)
 
         compact_edges = torch.tensor([[t[0], t[1]] for t in compact_triples], dtype=torch.long).t()
         compact_etypes = torch.tensor([t[2] for t in compact_triples])
@@ -623,7 +624,8 @@ class TransductiveTemporalCompactDataset(InMemoryDataset):
 
         train_edges = torch.cat([compact_edges, compact_edges.flip(0)], dim=1)
         train_etypes = torch.cat([compact_etypes, compact_etypes + num_relations])
-        train_ttypes = compact_timestamps + compact_timestamps
+        train_ttypes = torch.cat([compact_timestamps, compact_timestamps])
+        #train_ttypes = compact_timestamps + compact_timestamps
 
         train_data = Data(edge_index=train_edges, edge_type=train_etypes, num_nodes=num_node,
                           target_edge_index=train_target_edges, target_edge_type=train_target_etypes,

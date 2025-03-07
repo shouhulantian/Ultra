@@ -120,7 +120,7 @@ def train_and_validate(cfg, model, train_data, valid_data, device, logger, filte
     model.load_state_dict(state["model"])
     util.synchronize()
 
-def sample_quadruples(quadruples, sample_ratio=0.05):
+def sample_quadruples(quadruples, sample_ratio=0.2):
     num_samples = int(quadruples.shape[0] * sample_ratio)  # Compute 30% of the quadruples
     indices = torch.randperm(quadruples.shape[0])[:num_samples]  # Randomly shuffle and select indices
     return quadruples[indices]  # Select the sampled quadruples
@@ -218,10 +218,10 @@ def train_and_validate_time(cfg, model, train_data, valid_data, device, logger, 
             logger.warning(separator)
             logger.warning("Evaluate on valid")
         result = test_time(cfg, model, valid_data, filtered_data=filtered_data, device=device, logger=logger,train_data=train_data)
-        if rank == 0:
-            logger.warning(separator)
-            logger.warning("Evaluate on test")
-        result = test_time(cfg, model, test_data, filtered_data=filtered_data, device=device, logger=logger,train_data=train_data)
+        # if rank == 0:
+        #     logger.warning(separator)
+        #     logger.warning("Evaluate on test")
+        # result = test_time(cfg, model, test_data, filtered_data=filtered_data, device=device, logger=logger,train_data=train_data)
         if result > best_result:
             best_result = result
             best_epoch = epoch
